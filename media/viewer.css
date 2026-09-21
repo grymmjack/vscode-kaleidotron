@@ -124,7 +124,7 @@ body[data-bg="editor"] #stage {
   display: grid;
   gap: 2px;
   align-content: start;
-  justify-content: start;
+  justify-content: safe center;
   background: var(--vscode-editor-background, #1e1e1e);
 }
 .sw {
