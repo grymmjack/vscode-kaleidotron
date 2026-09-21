@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <rect x="2" y="3.5" width="20" height="17" rx="2.5" fill="#0b1620" stroke="#204a5e" stroke-width="1"/>
+  <text x="4.5" y="16" font-family="monospace" font-weight="bold" font-size="8" fill="#7fdbff">iCE</text>
+  <path d="M18 6 l1.6 2.8 -3.2 0 z" fill="#bde7ff"/>
+</svg>

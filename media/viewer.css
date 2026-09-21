@@ -1,0 +1,154 @@
+:root {
+  --bar-h: 30px;
+}
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  color: var(--vscode-foreground);
+}
+#toolbar {
+  height: var(--bar-h);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-editorWidget-background);
+  white-space: nowrap;
+}
+#toolbar .spacer {
+  flex: 1;
+}
+#toolbar #title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40%;
+}
+#toolbar button {
+  background: var(--vscode-button-secondaryBackground, #3a3d41);
+  color: var(--vscode-button-secondaryForeground, #fff);
+  border: none;
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+#toolbar button:hover {
+  background: var(--vscode-button-secondaryHoverBackground, #45494e);
+}
+#toolbar .tgl {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+#bg {
+  width: 22px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 3px;
+  background: none;
+  cursor: pointer;
+}
+#presets {
+  display: inline-flex;
+  gap: 2px;
+}
+#presets .zp {
+  background: var(--vscode-button-secondaryBackground, #3a3d41);
+  color: var(--vscode-button-secondaryForeground, #fff);
+  border: none;
+  padding: 3px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+#presets .zp:hover {
+  background: var(--vscode-button-secondaryHoverBackground, #45494e);
+}
+#zoom {
+  width: 52px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  color: var(--vscode-foreground);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 2px 0;
+}
+#zoom:hover {
+  border-color: var(--vscode-panel-border);
+}
+#zoom:focus {
+  outline: none;
+  background: var(--vscode-input-background);
+  border-color: var(--vscode-focusBorder);
+  color: var(--vscode-input-foreground);
+}
+
+#stage {
+  position: absolute;
+  top: var(--bar-h);
+  left: 0;
+  right: 0;
+  bottom: 18px;
+  overflow: auto;
+  background: #000;
+}
+body[data-bg="editor"] #stage {
+  background: var(--vscode-editor-background);
+}
+#stage.panning {
+  cursor: grabbing;
+}
+#content {
+  display: inline-block; /* shrink-wrap the canvas so scrolling reaches its edges */
+  min-width: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+#content.centered {
+  display: flex;
+}
+/* margin:auto in a flex container centers on both axes AND, when the art is
+   larger than the viewport, still lets you scroll to its top-left edge. */
+#content.centered > #art {
+  margin: auto;
+}
+#art {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.ruler {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+#status {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 18px;
+  line-height: 18px;
+  padding: 0 8px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  border-top: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-editorWidget-background);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

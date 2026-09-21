@@ -1,0 +1,61 @@
+{
+  "iconDefinitions": {
+    "_file": {
+      "iconPath": "./icons/_file.svg"
+    },
+    "_folder": {
+      "iconPath": "./icons/_folder.svg"
+    },
+    "_folder_open": {
+      "iconPath": "./icons/_folder_open.svg"
+    },
+    "kt_ansi": {
+      "iconPath": "./icons/ansi.svg"
+    },
+    "kt_xbin": {
+      "iconPath": "./icons/xbin.svg"
+    },
+    "kt_bin": {
+      "iconPath": "./icons/bin.svg"
+    },
+    "kt_tundra": {
+      "iconPath": "./icons/tundra.svg"
+    },
+    "kt_idf": {
+      "iconPath": "./icons/idf.svg"
+    },
+    "kt_adf": {
+      "iconPath": "./icons/adf.svg"
+    },
+    "kt_petscii": {
+      "iconPath": "./icons/petscii.svg"
+    },
+    "kt_textmode": {
+      "iconPath": "./icons/textmode.svg"
+    },
+    "kt_rip": {
+      "iconPath": "./icons/rip.svg"
+    }
+  },
+  "file": "_file",
+  "folder": "_folder",
+  "folderExpanded": "_folder_open",
+  "fileExtensions": {
+    "ans": "kt_ansi",
+    "nfo": "kt_ansi",
+    "diz": "kt_ansi",
+    "asc": "kt_ansi",
+    "msg": "kt_ansi",
+    "cia": "kt_ansi",
+    "ice": "kt_idf",
+    "xb": "kt_xbin",
+    "xbin": "kt_xbin",
+    "tnd": "kt_tundra",
+    "idf": "kt_idf",
+    "adf": "kt_adf",
+    "seq": "kt_petscii",
+    "pet": "kt_petscii",
+    "bin": "kt_bin",
+    "rip": "kt_rip"
+  }
+}

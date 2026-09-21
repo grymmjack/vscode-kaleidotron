@@ -1,0 +1,5 @@
+node_modules/
+dist/
+*.vsix
+media/kaleidotron_textmode.wasm
+.DS_Store

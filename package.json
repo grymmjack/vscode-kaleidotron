@@ -1,0 +1,415 @@
+{
+  "name": "vscode-kaleidotron",
+  "displayName": "Kaleidotron — Text-mode & Scene Art Viewer",
+  "description": "Native viewers for ANSI/ASCII, XBIN, BIN, TundraDraw, iCE Draw, Artworx, PETSCII and more — authentic CP437/VGA & C64 rendering, powered by kaleidotron's Rust decoders compiled to WebAssembly.",
+  "version": "0.2.1",
+  "publisher": "grymmjack",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/grymmjack/vscode-kaleidotron"
+  },
+  "icon": "images/icon.png",
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "ANSI",
+    "ASCII art",
+    "XBIN",
+    "PETSCII",
+    "scene",
+    "CP437",
+    "textmode",
+    "BBS"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "kaleidotron.textmode",
+        "displayName": "Kaleidotron Text-mode Viewer",
+        "selector": [
+          {
+            "filenamePattern": "*.ans"
+          },
+          {
+            "filenamePattern": "*.ANS"
+          },
+          {
+            "filenamePattern": "*.xb"
+          },
+          {
+            "filenamePattern": "*.xbin"
+          },
+          {
+            "filenamePattern": "*.tnd"
+          },
+          {
+            "filenamePattern": "*.idf"
+          },
+          {
+            "filenamePattern": "*.adf"
+          },
+          {
+            "filenamePattern": "*.seq"
+          },
+          {
+            "filenamePattern": "*.pet"
+          },
+          {
+            "filenamePattern": "*.ice"
+          },
+          {
+            "filenamePattern": "*.cia"
+          },
+          {
+            "filenamePattern": "*.nfo"
+          },
+          {
+            "filenamePattern": "*.diz"
+          },
+          {
+            "filenamePattern": "*.rip"
+          }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "kaleidotron.textmode.opt",
+        "displayName": "Kaleidotron Text-mode Viewer",
+        "selector": [
+          {
+            "filenamePattern": "*.asc"
+          },
+          {
+            "filenamePattern": "*.msg"
+          },
+          {
+            "filenamePattern": "*.bin"
+          },
+          {
+            "filenamePattern": "*.txt"
+          }
+        ],
+        "priority": "option"
+      },
+      {
+        "viewType": "kaleidotron.image",
+        "displayName": "Kaleidotron Image Viewer",
+        "selector": [
+          {
+            "filenamePattern": "*.png"
+          },
+          {
+            "filenamePattern": "*.jpg"
+          },
+          {
+            "filenamePattern": "*.jpeg"
+          },
+          {
+            "filenamePattern": "*.gif"
+          },
+          {
+            "filenamePattern": "*.webp"
+          },
+          {
+            "filenamePattern": "*.bmp"
+          },
+          {
+            "filenamePattern": "*.ico"
+          },
+          {
+            "filenamePattern": "*.avif"
+          },
+          {
+            "filenamePattern": "*.svg"
+          }
+        ],
+        "priority": "option"
+      },
+      {
+        "viewType": "kaleidotron.graphics",
+        "displayName": "Kaleidotron Image Viewer",
+        "selector": [
+          {
+            "filenamePattern": "*.pcx"
+          },
+          {
+            "filenamePattern": "*.psd"
+          },
+          {
+            "filenamePattern": "*.xcf"
+          },
+          {
+            "filenamePattern": "*.ase"
+          },
+          {
+            "filenamePattern": "*.aseprite"
+          },
+          {
+            "filenamePattern": "*.iff"
+          },
+          {
+            "filenamePattern": "*.ilbm"
+          },
+          {
+            "filenamePattern": "*.lbm"
+          },
+          {
+            "filenamePattern": "*.tga"
+          },
+          {
+            "filenamePattern": "*.tiff"
+          },
+          {
+            "filenamePattern": "*.tif"
+          },
+          {
+            "filenamePattern": "*.qoi"
+          },
+          {
+            "filenamePattern": "*.pnm"
+          },
+          {
+            "filenamePattern": "*.ppm"
+          },
+          {
+            "filenamePattern": "*.pgm"
+          },
+          {
+            "filenamePattern": "*.pbm"
+          },
+          {
+            "filenamePattern": "*.ff"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "commands": [
+      {
+        "command": "kaleidotron.toggleFont9px",
+        "title": "Kaleidotron: Toggle 9-dot VGA cell (9px font)"
+      },
+      {
+        "command": "kaleidotron.savePng",
+        "title": "Kaleidotron: Save as PNG…"
+      },
+      {
+        "command": "kaleidotron.openExternally",
+        "title": "Kaleidotron: Open in default app"
+      },
+      {
+        "command": "kaleidotron.openInKaleidotron",
+        "title": "Open in Kaleidotron (app)",
+        "category": "Kaleidotron"
+      },
+      {
+        "command": "kaleidotron.openInViewer",
+        "title": "Open with Kaleidotron Viewer",
+        "category": "Kaleidotron"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "kaleidotron.openInViewer",
+          "when": "resourceExtname =~ /\\.(ans|asc|nfo|diz|ice|cia|msg|xb|xbin|bin|tnd|idf|adf|seq|pet|rip)$/i",
+          "group": "navigation@30"
+        },
+        {
+          "command": "kaleidotron.openInKaleidotron",
+          "when": "resourceExtname =~ /\\.(ans|asc|nfo|diz|ice|cia|msg|xb|xbin|bin|tnd|idf|adf|seq|pet|rip|txt)$/i",
+          "group": "navigation@31"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "kaleidotron.openInKaleidotron",
+          "when": "resourceExtname =~ /\\.(ans|asc|nfo|diz|ice|cia|msg|xb|xbin|bin|tnd|idf|adf|seq|pet|rip)$/i",
+          "group": "navigation@31"
+        }
+      ]
+    },
+    "iconThemes": [
+      {
+        "id": "kaleidotron-scene-icons",
+        "label": "Kaleidotron Scene Icons",
+        "path": "./media/icon-theme.json"
+      }
+    ],
+    "languages": [
+      {
+        "id": "kt-ansi",
+        "aliases": [
+          "ANSI Art"
+        ],
+        "extensions": [
+          ".ans",
+          ".nfo",
+          ".diz",
+          ".cia"
+        ],
+        "icon": {
+          "light": "./media/icons/ansi.svg",
+          "dark": "./media/icons/ansi.svg"
+        }
+      },
+      {
+        "id": "kt-xbin",
+        "aliases": [
+          "XBIN"
+        ],
+        "extensions": [
+          ".xb",
+          ".xbin"
+        ],
+        "icon": {
+          "light": "./media/icons/xbin.svg",
+          "dark": "./media/icons/xbin.svg"
+        }
+      },
+      {
+        "id": "kt-tundra",
+        "aliases": [
+          "TundraDraw"
+        ],
+        "extensions": [
+          ".tnd"
+        ],
+        "icon": {
+          "light": "./media/icons/tundra.svg",
+          "dark": "./media/icons/tundra.svg"
+        }
+      },
+      {
+        "id": "kt-idf",
+        "aliases": [
+          "iCE Draw"
+        ],
+        "extensions": [
+          ".idf",
+          ".ice"
+        ],
+        "icon": {
+          "light": "./media/icons/idf.svg",
+          "dark": "./media/icons/idf.svg"
+        }
+      },
+      {
+        "id": "kt-adf",
+        "aliases": [
+          "Artworx"
+        ],
+        "extensions": [
+          ".adf"
+        ],
+        "icon": {
+          "light": "./media/icons/adf.svg",
+          "dark": "./media/icons/adf.svg"
+        }
+      },
+      {
+        "id": "kt-petscii",
+        "aliases": [
+          "PETSCII"
+        ],
+        "extensions": [
+          ".seq",
+          ".pet"
+        ],
+        "icon": {
+          "light": "./media/icons/petscii.svg",
+          "dark": "./media/icons/petscii.svg"
+        }
+      },
+      {
+        "id": "kt-rip",
+        "aliases": [
+          "RIPscript"
+        ],
+        "extensions": [
+          ".rip"
+        ],
+        "icon": {
+          "light": "./media/icons/rip.svg",
+          "dark": "./media/icons/rip.svg"
+        }
+      }
+    ],
+    "configuration": {
+      "title": "Kaleidotron",
+      "properties": {
+        "kaleidotron.background": {
+          "type": "string",
+          "enum": [
+            "black",
+            "editor"
+          ],
+          "default": "black",
+          "description": "Viewer background: authentic black, or the editor theme background."
+        },
+        "kaleidotron.kaleidotronPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the kaleidotron executable for 'Open in Kaleidotron'. Leave blank to auto-detect on PATH."
+        },
+        "kaleidotron.externalTools": {
+          "type": "array",
+          "default": [],
+          "markdownDescription": "Programs offered in the viewer's **Open in…** menu. Each entry: `{ name, command, args?, extensions? }`. Use `${file}` in `args` for the file path (defaults to `[\"${file}\"]`). Limit an entry to certain types with `extensions` (e.g. `[\"ans\",\"xb\"]`; empty = all). Known editors found on PATH (PabloDraw, Moebius, IcyDraw, GIMP, Aseprite) are offered automatically.",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "command"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Menu label."
+              },
+              "command": {
+                "type": "string",
+                "description": "Executable (on PATH or an absolute path)."
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Arguments; ${file} is replaced with the file path."
+              },
+              "extensions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Only show for these extensions (without the dot). Empty = all."
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "node esbuild.mjs --production && npm run copy-wasm",
+    "watch": "node esbuild.mjs --watch",
+    "copy-wasm": "node scripts/copy-wasm.mjs",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.84.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.4.0"
+  }
+}
