@@ -385,7 +385,7 @@
     aplaying = false; aoffset = 0; aplay.textContent = "▶";
     drawWave(); updateATime();
   }
-  async function decodeAudio() {
+  function showAudioUI() {
     isAudio = true;
     viewctl.style.display = "none";
     audioctl.style.display = "";
@@ -400,6 +400,14 @@
       again.gain.value = (avol.value | 0) / 100;
       again.connect(actx.destination);
     }
+  }
+  function finishAudio() {
+    apeaks = computePeaks(abuf);
+    aoffset = 0; aplaying = false; aplay.textContent = "▶";
+    layoutWave(); drawWave(); updateATime(); updateAudioStatus();
+  }
+  async function decodeAudio() {
+    showAudioUI();
     try {
       const ab = fileBytes.buffer.slice(
         fileBytes.byteOffset,
@@ -410,9 +418,29 @@
       statusEl.textContent = "Could not decode this audio.";
       return;
     }
-    apeaks = computePeaks(abuf);
-    aoffset = 0; aplaying = false; aplay.textContent = "▶";
-    layoutWave(); drawWave(); updateATime(); updateAudioStatus();
+    finishAudio();
+  }
+  /** Render a tracker module (MOD/XM/S3M/IT) via the wasm → an AudioBuffer. */
+  async function decodeTracker() {
+    showAudioUI();
+    await loadWasm();
+    const ex = wasm.exports;
+    const ptr = ex.input_ptr(fileBytes.length);
+    mem().set(fileBytes, ptr);
+    if (!ex.decode_tracker()) {
+      statusEl.textContent = "Could not decode this module.";
+      return;
+    }
+    const rate = ex.audio_rate();
+    const ch = ex.audio_channels();
+    const inter = new Float32Array(mem().buffer, ex.audio_ptr(), ex.audio_len() / 4);
+    const frames = Math.floor(inter.length / ch);
+    abuf = actx.createBuffer(ch, frames, rate);
+    for (let c = 0; c < ch; c++) {
+      const cd = abuf.getChannelData(c);
+      for (let i = 0; i < frames; i++) cd[i] = inter[i * ch + c];
+    }
+    finishAudio();
   }
 
   function setZoom(z) {
@@ -688,7 +716,7 @@
       fileBytes = b64ToBytes(msg.b64);
       isImage = msg.kind === "image";
       isSvg = msg.kind === "svg";
-      isAudio = msg.kind === "audio";
+      isAudio = msg.kind === "audio" || msg.kind === "tracker";
       mime = msg.mime || "";
       sauce = isImage || isSvg || isAudio ? null : parseSauce(fileBytes);
       extCode = msg.extCode | 0;
@@ -713,7 +741,8 @@
       // decode first so natW/natH are known, then apply remembered zoom (or fit)
       const savedZoom = typeof msg.zoom === "number" ? msg.zoom : 0;
       if (isAudio) {
-        await decodeAudio();
+        if (msg.kind === "tracker") await decodeTracker();
+        else await decodeAudio();
       } else {
         // ensure the audio UI is torn down + the view UI restored
         audioStop();

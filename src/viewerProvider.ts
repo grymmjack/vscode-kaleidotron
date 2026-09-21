@@ -41,6 +41,8 @@ const WASM_RASTER_EXTS = new Set([
 const AUDIO_EXTS = new Set([
   "mp3", "wav", "ogg", "oga", "flac", "m4a", "aac", "opus", "weba",
 ]);
+/** Tracker modules the WASM renders to PCM (xmrs) → the same waveform player. */
+const TRACKER_EXTS = new Set(["mod", "xm", "s3m", "it"]);
 function audioMime(ext: string): string {
   const m: Record<string, string> = {
     mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", oga: "audio/ogg",
@@ -96,8 +98,12 @@ export class TextmodeViewerProvider
     const isSvg = ext === "svg";
     const isImage = IMAGE_EXTS.has(ext);
     const isAudio = AUDIO_EXTS.has(ext);
-    // svg + raster images + audio → the browser decodes; everything else → wasm.
-    const kind = isAudio ? "audio" : isSvg ? "svg" : isImage ? "image" : "textmode";
+    const isTracker = TRACKER_EXTS.has(ext);
+    // svg + raster images + native audio → the browser; tracker → wasm PCM;
+    // everything else → the wasm decoders.
+    const kind = isTracker
+      ? "tracker"
+      : isAudio ? "audio" : isSvg ? "svg" : isImage ? "image" : "textmode";
     const cfg = vscode.workspace.getConfiguration("kaleidotron");
     const gs = this.ctx.globalState;
     panel.webview.postMessage({
@@ -109,7 +115,7 @@ export class TextmodeViewerProvider
       kind,
       mime: isImage ? imageMime(ext) : isSvg ? "image/svg+xml" : isAudio ? audioMime(ext) : "",
       extCode: EXT_CODE[ext] ?? 0,
-      format: isSvg ? "SVG" : isAudio || isImage ? ext.toUpperCase() : FORMAT_NAME[EXT_CODE[ext] ?? 0],
+      format: isSvg ? "SVG" : isAudio || isTracker || isImage ? ext.toUpperCase() : FORMAT_NAME[EXT_CODE[ext] ?? 0],
       font9: gs.get<boolean>("view.font9", true),
       background: cfg.get<string>("background", "black"),
       name: basename(doc.uri.fsPath),

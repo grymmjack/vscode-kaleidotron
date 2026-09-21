@@ -31,8 +31,13 @@ export function activate(context: vscode.ExtensionContext) {
       webviewOptions: { retainContextWhenHidden: true },
       supportsMultipleEditorsPerDocument: false,
     }),
-    // Audio (mp3/wav/ogg/flac/…) — a waveform + transport (Web Audio).
+    // Audio (mp3/wav/ogg/flac/… + xm/s3m/it trackers) — a waveform + transport.
     vscode.window.registerCustomEditorProvider("kaleidotron.audio", provider, {
+      webviewOptions: { retainContextWhenHidden: true },
+      supportsMultipleEditorsPerDocument: false,
+    }),
+    // .mod trackers (opt-in — the extension collides with go.mod).
+    vscode.window.registerCustomEditorProvider("kaleidotron.tracker", provider, {
       webviewOptions: { retainContextWhenHidden: true },
       supportsMultipleEditorsPerDocument: false,
     })
