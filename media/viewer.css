@@ -47,7 +47,8 @@ body {
   gap: 4px;
   cursor: pointer;
 }
-#bg {
+#bg,
+#palbg {
   width: 22px;
   height: 16px;
   padding: 0;
@@ -120,17 +121,18 @@ body[data-bg="editor"] #stage {
   inset: 0;
   overflow: auto;
   padding: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
+  display: grid;
   gap: 2px;
+  align-content: start;
+  justify-content: start;
   background: var(--vscode-editor-background, #1e1e1e);
 }
 .sw {
-  width: 46px;
-  height: 46px;
+  width: 100%;
+  height: 100%;
   cursor: pointer;
   border: 1px solid rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
 }
 .sw:hover {
   outline: 2px solid var(--vscode-focusBorder);
@@ -146,6 +148,30 @@ body[data-bg="editor"] #stage {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+.numin {
+  width: 50px;
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+  border-radius: 3px;
+  padding: 2px 4px;
+}
+#palpresets {
+  display: inline-flex;
+  gap: 2px;
+}
+#palpresets .pp {
+  background: var(--vscode-button-secondaryBackground, #3a3d41);
+  color: var(--vscode-button-secondaryForeground, #fff);
+  border: none;
+  padding: 3px 7px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+#palpresets .pp:hover {
+  background: var(--vscode-button-secondaryHoverBackground, #45494e);
 }
 #palctl .cpf {
   background: var(--vscode-button-secondaryBackground, #3a3d41);

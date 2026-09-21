@@ -25,6 +25,8 @@
   let isPalette = false; // palette swatch grid (.gpl/.pal/.act/.aco/.hex)
   let autoplay = false; // start audio/music automatically on open
   let copyFormat = "hex"; // palette swatch copy format: hex | rgb | hsv
+  let palCols = 16; // palette grid columns
+  let palSize = 42; // palette swatch size (px)
   let mime = "";
   // Web Audio state
   let actx = null, abuf = null, asrc = null, again = null;
@@ -61,6 +63,10 @@
   const palctl = el("palctl");
   const palgrid = el("palgrid");
   const palinfo = el("palinfo");
+  const palcols = /** @type {HTMLInputElement} */ (el("palcols"));
+  const palsize = /** @type {HTMLInputElement} */ (el("palsize"));
+  const palpresets = el("palpresets");
+  const palbg = /** @type {HTMLInputElement} */ (el("palbg"));
 
   // Pangrams + typography sayings for the 🎲 Random button (pangrams exercise
   // every letter — ideal for a font preview).
@@ -459,12 +465,21 @@
     if (bytes.length >= 768) return parseRawRGB(bytes, Math.floor(bytes.length / 3), "Palette");
     return parseJasc(t);
   }
+  let paletteColors = [];
+  let paletteName = "";
   function renderPalette() {
     const ext = (format || "").toLowerCase();
     const parsed = parsePalette(fileBytes, ext) || { name: "", colors: [] };
-    const colors = parsed.colors;
+    paletteColors = parsed.colors;
+    paletteName = parsed.name;
+    layoutPalette();
+  }
+  function layoutPalette() {
+    palgrid.style.gridTemplateColumns = `repeat(${Math.max(1, palCols)}, ${palSize}px)`;
+    palgrid.style.gridAutoRows = `${palSize}px`;
+    palgrid.style.background = bgColor || "";
     palgrid.textContent = "";
-    colors.forEach((c, i) => {
+    paletteColors.forEach((c, i) => {
       const hsv = rgb2hsv(c.r, c.g, c.b);
       const sw = document.createElement("div");
       sw.className = "sw";
@@ -479,9 +494,24 @@
       };
       palgrid.appendChild(sw);
     });
-    palinfo.textContent = (parsed.name ? parsed.name + "  ·  " : "") + `${colors.length} colors`;
-    statusEl.textContent = `${format}  ·  ${parsed.name || "palette"}  ·  ${colors.length} colors  ·  click a swatch to copy ${copyFormat.toUpperCase()}`;
+    palinfo.textContent = (paletteName ? paletteName + "  ·  " : "") + `${paletteColors.length} colors`;
+    statusEl.textContent = `${format}  ·  ${paletteName || "palette"}  ·  ${paletteColors.length} colors  ·  ${palCols} cols  ·  click a swatch to copy ${copyFormat.toUpperCase()}`;
     statusEl.title = statusEl.textContent;
+  }
+  function buildPalPresets() {
+    palpresets.textContent = "";
+    for (const n of [4, 8, 16, 32, 64, 128]) {
+      const b = document.createElement("button");
+      b.className = "pp";
+      b.textContent = String(n);
+      b.onclick = () => {
+        palCols = n;
+        palcols.value = String(n);
+        layoutPalette();
+        persist();
+      };
+      palpresets.appendChild(b);
+    }
   }
   function updateCopyButtons() {
     for (const b of document.querySelectorAll("#palctl .cpf"))
@@ -496,7 +526,11 @@
     rulerTop.style.display = "none";
     rulerLeft.style.display = "none";
     palctl.style.display = "";
-    palgrid.style.display = "block";
+    palgrid.style.display = "grid";
+    palcols.value = String(palCols);
+    palsize.value = String(palSize);
+    if (bgColor) palbg.value = bgColor;
+    if (!palpresets.childElementCount) buildPalPresets();
     updateCopyButtons();
   }
 
@@ -877,7 +911,10 @@
   function persist() {
     clearTimeout(persistT);
     persistT = setTimeout(() => {
-      vscode.postMessage({ type: "persist", font9, zoom, center, ruler, fit, autoplay, bg: bgColor });
+      vscode.postMessage({
+        type: "persist", font9, zoom, center, ruler, fit, autoplay,
+        bg: bgColor, palCols, palSize,
+      });
     }, 250);
   }
 
@@ -952,9 +989,25 @@
     b.onclick = () => {
       copyFormat = b.getAttribute("data-f");
       updateCopyButtons();
-      if (isPalette) renderPalette();
+      if (isPalette) layoutPalette();
     };
   }
+  palcols.addEventListener("input", () => {
+    palCols = Math.max(1, Math.min(256, parseInt(palcols.value) || 16));
+    layoutPalette();
+    persist();
+  });
+  palsize.addEventListener("input", () => {
+    palSize = Math.max(8, Math.min(160, parseInt(palsize.value) || 42));
+    layoutPalette();
+    persist();
+  });
+  palbg.oninput = () => {
+    bgColor = palbg.value;
+    palgrid.style.background = bgColor;
+    if (bgBox) bgBox.value = bgColor;
+    persist();
+  };
   // audio: auto-play preference
   aautoplay.onchange = () => {
     autoplay = aautoplay.checked;
@@ -1022,6 +1075,8 @@
       isAudio = ["audio", "tracker", "rad", "midi"].includes(msg.kind);
       autoplay = !!msg.autoplay;
       aautoplay.checked = autoplay;
+      if (typeof msg.palCols === "number" && msg.palCols > 0) palCols = msg.palCols;
+      if (typeof msg.palSize === "number" && msg.palSize >= 8) palSize = msg.palSize;
       mime = msg.mime || "";
       sauce = isImage || isSvg || isAudio ? null : parseSauce(fileBytes);
       extCode = msg.extCode | 0;

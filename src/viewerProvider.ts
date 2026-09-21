@@ -210,6 +210,8 @@ export class TextmodeViewerProvider
       ruler: gs.get<boolean>("view.ruler", false),
       fit: gs.get<boolean>("view.fit", false),
       bg: gs.get<string>("view.bg", ""),
+      palCols: gs.get<number>("view.palCols", 16),
+      palSize: gs.get<number>("view.palSize", 42),
     });
   }
 
@@ -254,6 +256,10 @@ export class TextmodeViewerProvider
           await this.ctx.globalState.update("view.autoplay", msg.autoplay);
         if (typeof msg.bg === "string")
           await this.ctx.globalState.update("view.bg", msg.bg);
+        if (typeof msg.palCols === "number")
+          await this.ctx.globalState.update("view.palCols", msg.palCols);
+        if (typeof msg.palSize === "number")
+          await this.ctx.globalState.update("view.palSize", msg.palSize);
         break;
     }
   }
@@ -422,10 +428,14 @@ export class TextmodeViewerProvider
       <span class="volwrap" title="Volume">🔊<input type="range" id="avol" min="0" max="100" value="100" /></span>
     </span>
     <span id="palctl" style="display:none">
-      <span class="lbl">Copy:</span>
+      <span class="lbl">Cols</span><input id="palcols" class="numin" type="number" min="1" max="256" value="16" />
+      <span id="palpresets"></span>
+      <span class="lbl">Size</span><input id="palsize" class="numin" type="number" min="8" max="160" value="42" />
+      <span class="lbl">Copy</span>
       <button class="cpf" id="cpHex" data-f="hex">HEX</button>
       <button class="cpf" id="cpRgb" data-f="rgb">RGB</button>
       <button class="cpf" id="cpHsv" data-f="hsv">HSV</button>
+      <label class="tgl" title="Background color"><input type="color" id="palbg" value="#1e1e1e" /> BG</label>
       <span id="palinfo" class="lbl"></span>
     </span>
     <button id="openExt" title="Open in default app">Open in…</button>
