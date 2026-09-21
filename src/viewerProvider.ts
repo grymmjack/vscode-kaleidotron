@@ -1,6 +1,8 @@
 import * as vscode from "vscode";
 import { Buffer } from "node:buffer";
 import * as cp from "node:child_process";
+import * as fs from "node:fs";
+import * as path from "node:path";
 
 /** Map a lowercased file extension to the wasm `decode_input` ext-code.
  *  Kept in sync with `ext_str` in kaleidotron-textmode-wasm/src/lib.rs. */
@@ -40,10 +42,60 @@ const WASM_RASTER_EXTS = new Set([
 ]);
 /** Audio the browser decodes natively (Web Audio) — a waveform + transport. */
 const AUDIO_EXTS = new Set([
-  "mp3", "wav", "ogg", "oga", "flac", "m4a", "aac", "opus", "weba",
+  "mp3", "wav", "ogg", "oga", "flac", "m4a", "aac", "opus", "weba", "aif", "aiff",
 ]);
 /** Tracker modules the WASM renders to PCM (xmrs) → the same waveform player. */
 const TRACKER_EXTS = new Set(["mod", "xm", "s3m", "it"]);
+/** RAD (Reality Adlib Tracker) — OPL3 FM synth via the WASM. */
+const RAD_EXTS = new Set(["rad"]);
+/** MIDI — synthesized via the WASM + a General MIDI SoundFont. */
+const MIDI_EXTS = new Set(["mid", "midi", "kar", "rmi"]);
+
+/** Resolve a General MIDI SoundFont (.sf2): the setting, else a common system
+ *  path. Small GM fonts (TimGM6mb) are preferred over huge ones (FluidR3). */
+function resolveSoundfont(): string | undefined {
+  const set = vscode.workspace
+    .getConfiguration("kaleidotron")
+    .get<string>("soundfontPath")
+    ?.trim();
+  if (set) return fs.existsSync(set) ? set : undefined;
+  const dirs = [
+    "/usr/share/sounds/sf2",
+    "/usr/share/soundfonts",
+    "/opt/homebrew/share/soundfonts",
+    "/usr/local/share/soundfonts",
+  ];
+  const rank = (n: string) =>
+    /timgm/i.test(n) ? 0 : /generaluser/i.test(n) ? 1 : /fluidr3|default/i.test(n) ? 2 : 3;
+  for (const d of dirs) {
+    try {
+      const found = fs
+        .readdirSync(d)
+        .filter((f) => /\.sf2$/i.test(f))
+        .sort((a, b) => rank(a) - rank(b));
+      if (found.length) return path.join(d, found[0]);
+    } catch {
+      /* dir missing */
+    }
+  }
+  return undefined;
+}
+/** Cache the (potentially large) SoundFont base64 by path, so MIDI opens are cheap. */
+const sfCache = new Map<string, string>();
+function soundfontB64(): string {
+  const p = resolveSoundfont();
+  if (!p) return "";
+  let b64 = sfCache.get(p);
+  if (b64 === undefined) {
+    try {
+      b64 = fs.readFileSync(p).toString("base64");
+    } catch {
+      b64 = "";
+    }
+    sfCache.set(p, b64);
+  }
+  return b64;
+}
 function audioMime(ext: string): string {
   const m: Record<string, string> = {
     mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", oga: "audio/ogg",
@@ -100,11 +152,16 @@ export class TextmodeViewerProvider
     const isImage = IMAGE_EXTS.has(ext);
     const isAudio = AUDIO_EXTS.has(ext);
     const isTracker = TRACKER_EXTS.has(ext);
-    // svg + raster images + native audio → the browser; tracker → wasm PCM;
-    // everything else → the wasm decoders.
-    const kind = isTracker
-      ? "tracker"
+    const isRad = RAD_EXTS.has(ext);
+    const isMidi = MIDI_EXTS.has(ext);
+    // svg + raster images + native audio → the browser; tracker/rad/midi → wasm
+    // PCM synthesis; everything else → the wasm decoders.
+    const kind = isRad
+      ? "rad"
+      : isMidi ? "midi"
+      : isTracker ? "tracker"
       : isAudio ? "audio" : isSvg ? "svg" : isImage ? "image" : "textmode";
+    const musical = isAudio || isTracker || isRad || isMidi;
     const cfg = vscode.workspace.getConfiguration("kaleidotron");
     const gs = this.ctx.globalState;
     panel.webview.postMessage({
@@ -115,8 +172,10 @@ export class TextmodeViewerProvider
       b64: Buffer.from(doc.bytes).toString("base64"),
       kind,
       mime: isImage ? imageMime(ext) : isSvg ? "image/svg+xml" : isAudio ? audioMime(ext) : "",
+      // MIDI needs a General MIDI SoundFont to synthesize.
+      sf2: isMidi ? soundfontB64() : "",
       extCode: EXT_CODE[ext] ?? 0,
-      format: isSvg ? "SVG" : isAudio || isTracker || isImage ? ext.toUpperCase() : FORMAT_NAME[EXT_CODE[ext] ?? 0],
+      format: isSvg ? "SVG" : musical || isImage ? ext.toUpperCase() : FORMAT_NAME[EXT_CODE[ext] ?? 0],
       font9: gs.get<boolean>("view.font9", true),
       background: cfg.get<string>("background", "black"),
       name: basename(doc.uri.fsPath),

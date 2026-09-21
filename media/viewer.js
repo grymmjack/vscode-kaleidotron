@@ -420,15 +420,16 @@
     }
     finishAudio();
   }
-  /** Render a tracker module (MOD/XM/S3M/IT) via the wasm → an AudioBuffer. */
-  async function decodeTracker() {
+  /** Shared path: run a wasm synth (`call` invokes decode_tracker/rad/midi),
+   *  then build an AudioBuffer from the rendered PCM. */
+  async function decodeWasmAudio(call) {
     showAudioUI();
     await loadWasm();
     const ex = wasm.exports;
     const ptr = ex.input_ptr(fileBytes.length);
     mem().set(fileBytes, ptr);
-    if (!ex.decode_tracker()) {
-      statusEl.textContent = "Could not decode this module.";
+    if (!call(ex)) {
+      statusEl.textContent = "Could not render this file.";
       return;
     }
     const rate = ex.audio_rate();
@@ -441,6 +442,22 @@
       for (let i = 0; i < frames; i++) cd[i] = inter[i * ch + c];
     }
     finishAudio();
+  }
+  const decodeTracker = () => decodeWasmAudio((ex) => ex.decode_tracker());
+  const decodeRad = () => decodeWasmAudio((ex) => ex.decode_rad());
+  async function decodeMidi(sf2b64) {
+    if (!sf2b64) {
+      showAudioUI();
+      statusEl.textContent =
+        "No SoundFont found — set kaleidotron.soundfontPath to a .sf2 to play MIDI.";
+      return;
+    }
+    const sf2 = b64ToBytes(sf2b64);
+    await decodeWasmAudio((ex) => {
+      const sp = ex.soundfont_ptr(sf2.length);
+      mem().set(sf2, sp);
+      return ex.decode_midi();
+    });
   }
 
   function setZoom(z) {
@@ -716,7 +733,7 @@
       fileBytes = b64ToBytes(msg.b64);
       isImage = msg.kind === "image";
       isSvg = msg.kind === "svg";
-      isAudio = msg.kind === "audio" || msg.kind === "tracker";
+      isAudio = ["audio", "tracker", "rad", "midi"].includes(msg.kind);
       mime = msg.mime || "";
       sauce = isImage || isSvg || isAudio ? null : parseSauce(fileBytes);
       extCode = msg.extCode | 0;
@@ -742,6 +759,8 @@
       const savedZoom = typeof msg.zoom === "number" ? msg.zoom : 0;
       if (isAudio) {
         if (msg.kind === "tracker") await decodeTracker();
+        else if (msg.kind === "rad") await decodeRad();
+        else if (msg.kind === "midi") await decodeMidi(msg.sf2);
         else await decodeAudio();
       } else {
         // ensure the audio UI is torn down + the view UI restored
