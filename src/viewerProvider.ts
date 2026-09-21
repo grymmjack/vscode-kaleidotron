@@ -46,6 +46,12 @@ const AUDIO_EXTS = new Set([
 ]);
 /** Tracker modules the WASM renders to PCM (xmrs) → the same waveform player. */
 const TRACKER_EXTS = new Set(["mod", "xm", "s3m", "it"]);
+/** Fonts — a rendered preview with Display-as / custom-text / glyph-grid controls. */
+const FONT_EXTS = new Set([
+  "ttf", "otf", "ttc", "otc", "fon", "fnt", "psf", "tdf",
+  "f08", "f09", "f10", "f11", "f12", "f13", "f14", "f15",
+  "f16", "f17", "f18", "f19", "f20",
+]);
 /** RAD (Reality Adlib Tracker) — OPL3 FM synth via the WASM. */
 const RAD_EXTS = new Set(["rad"]);
 /** MIDI — synthesized via the WASM + a General MIDI SoundFont. */
@@ -154,10 +160,12 @@ export class TextmodeViewerProvider
     const isTracker = TRACKER_EXTS.has(ext);
     const isRad = RAD_EXTS.has(ext);
     const isMidi = MIDI_EXTS.has(ext);
+    const isFont = FONT_EXTS.has(ext);
     // svg + raster images + native audio → the browser; tracker/rad/midi → wasm
-    // PCM synthesis; everything else → the wasm decoders.
-    const kind = isRad
-      ? "rad"
+    // PCM synthesis; fonts → the wasm font renderer; else → the wasm decoders.
+    const kind = isFont
+      ? "font"
+      : isRad ? "rad"
       : isMidi ? "midi"
       : isTracker ? "tracker"
       : isAudio ? "audio" : isSvg ? "svg" : isImage ? "image" : "textmode";
@@ -373,6 +381,13 @@ export class TextmodeViewerProvider
       <button id="zoomIn" title="Zoom in (crisp steps)">+</button>
       <span id="presets" title="Quick zoom — crisp levels for your display"></span>
       <button id="savePng" title="Save as PNG…">Save PNG</button>
+    </span>
+    <span id="fontctl" style="display:none">
+      <span class="lbl">Display:</span>
+      <label class="tgl"><input type="radio" name="fmode" id="fmodeName" checked /> Name</label>
+      <label class="tgl"><input type="radio" name="fmode" id="fmodeCustom" /> Custom</label>
+      <input id="ftext" class="ftext" placeholder="sample text…" spellcheck="false" disabled />
+      <label class="tgl"><input type="checkbox" id="fgrid" /> Grid</label>
     </span>
     <span id="audioctl" style="display:none">
       <button id="aplay" title="Play / Pause (Space)">▶</button>

@@ -21,6 +21,7 @@
   let isImage = false; // raster image (PNG/JPG/…) decoded natively, not via wasm
   let isSvg = false; // SVG rendered natively by the browser
   let isAudio = false; // audio (mp3/wav/ogg/flac/…) via Web Audio
+  let isFont = false; // font preview (TTF/OTF/FON/…/TDF) with sample/grid controls
   let mime = "";
   // Web Audio state
   let actx = null, abuf = null, asrc = null, again = null;
@@ -51,6 +52,10 @@
   const aloopBox = /** @type {HTMLInputElement} */ (el("aloop"));
   const atime = el("atime");
   const avol = /** @type {HTMLInputElement} */ (el("avol"));
+  const fontctl = el("fontctl");
+  const fmodeCustom = /** @type {HTMLInputElement} */ (el("fmodeCustom"));
+  const ftext = /** @type {HTMLInputElement} */ (el("ftext"));
+  const fgrid = /** @type {HTMLInputElement} */ (el("fgrid"));
   const rulerTop = /** @type {HTMLCanvasElement} */ (el("rulerTop"));
   const rulerLeft = /** @type {HTMLCanvasElement} */ (el("rulerLeft"));
 
@@ -110,6 +115,37 @@
     srcCtx.putImageData(new ImageData(bytes, w, h), 0, 0);
     colors = countColors(bytes);
     applyZoom();
+  }
+
+  /** Render a font: sample (name / custom text) or the full glyph grid. */
+  async function decodeFont() {
+    if (!isFont) return;
+    await loadWasm();
+    const ex = wasm.exports;
+    const ptr = ex.input_ptr(fileBytes.length);
+    mem().set(fileBytes, ptr);
+    const grid = fgrid.checked;
+    const text = fmodeCustom.checked && !grid ? ftext.value : "";
+    const enc = new TextEncoder().encode(text);
+    const tp = ex.text_ptr(enc.length);
+    mem().set(enc, tp);
+    if (!ex.decode_font(extCode, grid ? 1 : 0)) {
+      statusEl.textContent = "Could not render this font.";
+      return;
+    }
+    const w = ex.out_w(), h = ex.out_h(), len = ex.out_len(), optr = ex.out_ptr();
+    if (!w || !h) {
+      statusEl.textContent = "Nothing to render (empty text?).";
+      return;
+    }
+    const bytes = new Uint8ClampedArray(mem().subarray(optr, optr + len));
+    natW = w; natH = h; src.width = w; src.height = h;
+    srcCtx.putImageData(new ImageData(bytes, w, h), 0, 0);
+    colors = countColors(bytes);
+    applyZoom();
+  }
+  function syncFontControls() {
+    ftext.disabled = !fmodeCustom.checked || fgrid.checked;
   }
 
   /** Count distinct opaque RGB values (for the status readout). */
@@ -676,6 +712,19 @@
     const t = document.activeElement && document.activeElement.tagName;
     if (isAudio && e.key === " " && t !== "INPUT") { e.preventDefault(); audioToggle(); }
   });
+  // font controls: Display as Name/Custom, custom text, glyph grid
+  el("fmodeName").onchange = () => { syncFontControls(); decodeFont(); };
+  fmodeCustom.onchange = () => {
+    syncFontControls();
+    if (fmodeCustom.checked && !fgrid.checked) ftext.focus();
+    decodeFont();
+  };
+  fgrid.onchange = () => { syncFontControls(); decodeFont(); };
+  let ftextT = 0;
+  ftext.addEventListener("input", () => {
+    clearTimeout(ftextT);
+    ftextT = setTimeout(decodeFont, 200);
+  });
 
   function savePng() {
     vscode.postMessage({ type: "savePng", data: src.toDataURL("image/png") });
@@ -733,6 +782,7 @@
       fileBytes = b64ToBytes(msg.b64);
       isImage = msg.kind === "image";
       isSvg = msg.kind === "svg";
+      isFont = msg.kind === "font";
       isAudio = ["audio", "tracker", "rad", "midi"].includes(msg.kind);
       mime = msg.mime || "";
       sauce = isImage || isSvg || isAudio ? null : parseSauce(fileBytes);
@@ -769,7 +819,15 @@
         viewctl.style.display = "";
         wave.style.display = "none";
         content.style.display = "";
-        if (isSvg) await decodeSvg();
+        fontctl.style.display = isFont ? "" : "none";
+        if (isFont) {
+          el("fmodeName").checked = true;
+          fmodeCustom.checked = false;
+          fgrid.checked = false;
+          ftext.value = "";
+          syncFontControls();
+          await decodeFont();
+        } else if (isSvg) await decodeSvg();
         else if (isImage) await decodeImage();
         else { await loadWasm(); decodeAndRender(); }
         layoutRulers();
