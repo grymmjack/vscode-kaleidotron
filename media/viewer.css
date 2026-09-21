@@ -109,6 +109,34 @@ body[data-bg="editor"] #stage {
 #stage.panning {
   cursor: grabbing;
 }
+#wave {
+  position: absolute;
+  top: 0;
+  left: 0;
+  cursor: pointer;
+}
+#audioctl {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+#audioctl #aplay,
+#audioctl #astop {
+  min-width: 30px;
+  text-align: center;
+}
+#atime {
+  font-variant-numeric: tabular-nums;
+  min-width: 88px;
+}
+.volwrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+#avol {
+  width: 80px;
+}
 #content {
   display: inline-block; /* shrink-wrap the canvas so scrolling reaches its edges */
   min-width: 100%;

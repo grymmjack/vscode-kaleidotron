@@ -37,6 +37,18 @@ const WASM_RASTER_EXTS = new Set([
   "pcx", "psd", "xcf", "ase", "aseprite", "iff", "ilbm", "lbm",
   "tga", "tiff", "tif", "qoi", "pnm", "ppm", "pgm", "pbm", "ff",
 ]);
+/** Audio the browser decodes natively (Web Audio) — a waveform + transport. */
+const AUDIO_EXTS = new Set([
+  "mp3", "wav", "ogg", "oga", "flac", "m4a", "aac", "opus", "weba",
+]);
+function audioMime(ext: string): string {
+  const m: Record<string, string> = {
+    mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", oga: "audio/ogg",
+    flac: "audio/flac", m4a: "audio/mp4", aac: "audio/aac", opus: "audio/ogg",
+    weba: "audio/webm",
+  };
+  return m[ext] ?? "audio/*";
+}
 
 class KtDocument implements vscode.CustomDocument {
   constructor(
@@ -83,8 +95,9 @@ export class TextmodeViewerProvider
     const ext = extname(doc.uri.fsPath);
     const isSvg = ext === "svg";
     const isImage = IMAGE_EXTS.has(ext);
-    // svg + raster images → the browser decodes; everything else → the wasm.
-    const kind = isSvg ? "svg" : isImage ? "image" : "textmode";
+    const isAudio = AUDIO_EXTS.has(ext);
+    // svg + raster images + audio → the browser decodes; everything else → wasm.
+    const kind = isAudio ? "audio" : isSvg ? "svg" : isImage ? "image" : "textmode";
     const cfg = vscode.workspace.getConfiguration("kaleidotron");
     const gs = this.ctx.globalState;
     panel.webview.postMessage({
@@ -94,9 +107,9 @@ export class TextmodeViewerProvider
       // portable transport; these files are small.
       b64: Buffer.from(doc.bytes).toString("base64"),
       kind,
-      mime: isImage ? imageMime(ext) : isSvg ? "image/svg+xml" : "",
+      mime: isImage ? imageMime(ext) : isSvg ? "image/svg+xml" : isAudio ? audioMime(ext) : "",
       extCode: EXT_CODE[ext] ?? 0,
-      format: isSvg ? "SVG" : isImage ? ext.toUpperCase() : FORMAT_NAME[EXT_CODE[ext] ?? 0],
+      format: isSvg ? "SVG" : isAudio || isImage ? ext.toUpperCase() : FORMAT_NAME[EXT_CODE[ext] ?? 0],
       font9: gs.get<boolean>("view.font9", true),
       background: cfg.get<string>("background", "black"),
       name: basename(doc.uri.fsPath),
@@ -283,16 +296,25 @@ export class TextmodeViewerProvider
   <div id="toolbar">
     <span id="title"></span>
     <span class="spacer"></span>
-    <label class="tgl"><input type="checkbox" id="font9" /> 9px cell</label>
-    <label class="tgl"><input type="checkbox" id="center" /> Center</label>
-    <label class="tgl"><input type="checkbox" id="ruler" /> Ruler</label>
-    <label class="tgl" title="Fit to width on open (remembered)"><input type="checkbox" id="fit" /> Fit</label>
-    <label class="tgl" title="Background color"><input type="color" id="bg" value="#000000" /> BG</label>
-    <button id="zoomOut" title="Zoom out (crisp steps)">−</button>
-    <input id="zoom" class="zoominput" value="100%" title="Zoom — type a %% and press Enter" spellcheck="false" />
-    <button id="zoomIn" title="Zoom in (crisp steps)">+</button>
-    <span id="presets" title="Quick zoom — crisp levels for your display"></span>
-    <button id="savePng" title="Save as PNG…">Save PNG</button>
+    <span id="viewctl">
+      <label class="tgl"><input type="checkbox" id="font9" /> 9px cell</label>
+      <label class="tgl"><input type="checkbox" id="center" /> Center</label>
+      <label class="tgl"><input type="checkbox" id="ruler" /> Ruler</label>
+      <label class="tgl" title="Fit to width on open (remembered)"><input type="checkbox" id="fit" /> Fit</label>
+      <label class="tgl" title="Background color"><input type="color" id="bg" value="#000000" /> BG</label>
+      <button id="zoomOut" title="Zoom out (crisp steps)">−</button>
+      <input id="zoom" class="zoominput" value="100%" title="Zoom — type a %% and press Enter" spellcheck="false" />
+      <button id="zoomIn" title="Zoom in (crisp steps)">+</button>
+      <span id="presets" title="Quick zoom — crisp levels for your display"></span>
+      <button id="savePng" title="Save as PNG…">Save PNG</button>
+    </span>
+    <span id="audioctl" style="display:none">
+      <button id="aplay" title="Play / Pause (Space)">▶</button>
+      <button id="astop" title="Stop">■</button>
+      <label class="tgl"><input type="checkbox" id="aloop" /> Loop</label>
+      <span id="atime">0:00 / 0:00</span>
+      <span class="volwrap" title="Volume">🔊<input type="range" id="avol" min="0" max="100" value="100" /></span>
+    </span>
     <button id="openExt" title="Open in default app">Open in…</button>
     <button id="openKt" title="Open in Kaleidotron">Kaleidotron</button>
   </div>
@@ -300,6 +322,7 @@ export class TextmodeViewerProvider
     <div id="content"><canvas id="art"></canvas></div>
     <canvas id="rulerTop" class="ruler"></canvas>
     <canvas id="rulerLeft" class="ruler"></canvas>
+    <canvas id="wave" style="display:none"></canvas>
   </div>
   <div id="status"></div>
   <script nonce="${nonce}">window.__WASM_URI__ = ${JSON.stringify(

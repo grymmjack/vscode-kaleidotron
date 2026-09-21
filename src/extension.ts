@@ -30,6 +30,11 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.registerCustomEditorProvider("kaleidotron.font", provider, {
       webviewOptions: { retainContextWhenHidden: true },
       supportsMultipleEditorsPerDocument: false,
+    }),
+    // Audio (mp3/wav/ogg/flac/…) — a waveform + transport (Web Audio).
+    vscode.window.registerCustomEditorProvider("kaleidotron.audio", provider, {
+      webviewOptions: { retainContextWhenHidden: true },
+      supportsMultipleEditorsPerDocument: false,
     })
   );
 

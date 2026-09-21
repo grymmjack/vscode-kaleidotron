@@ -20,7 +20,11 @@
   let sauce = null; // parsed SAUCE record (font / credits / iCE), or null
   let isImage = false; // raster image (PNG/JPG/…) decoded natively, not via wasm
   let isSvg = false; // SVG rendered natively by the browser
+  let isAudio = false; // audio (mp3/wav/ogg/flac/…) via Web Audio
   let mime = "";
+  // Web Audio state
+  let actx = null, abuf = null, asrc = null, again = null;
+  let aplaying = false, aoffset = 0, astart = 0, apeaks = null, araf = 0;
 
   // Offscreen native-resolution canvas; the visible canvas is scaled from it to
   // an integer number of DEVICE pixels per source pixel (always-crisp nearest).
@@ -40,6 +44,13 @@
   const fitBox = /** @type {HTMLInputElement} */ (el("fit"));
   const bgBox = /** @type {HTMLInputElement} */ (el("bg"));
   const presets = el("presets");
+  const viewctl = el("viewctl");
+  const audioctl = el("audioctl");
+  const wave = /** @type {HTMLCanvasElement} */ (el("wave"));
+  const aplay = el("aplay");
+  const aloopBox = /** @type {HTMLInputElement} */ (el("aloop"));
+  const atime = el("atime");
+  const avol = /** @type {HTMLInputElement} */ (el("avol"));
   const rulerTop = /** @type {HTMLCanvasElement} */ (el("rulerTop"));
   const rulerLeft = /** @type {HTMLCanvasElement} */ (el("rulerLeft"));
 
@@ -267,6 +278,143 @@
     stage.style.background = bgColor || "";
   }
 
+  // ---- audio player (Web Audio) ----
+  function fmtTime(s) {
+    s = Math.max(0, s || 0);
+    return Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStart(2, "0");
+  }
+  function curAudioPos() {
+    if (!abuf) return 0;
+    let p = aplaying ? actx.currentTime - astart : aoffset;
+    if (aloopBox.checked && abuf.duration > 0)
+      p = ((p % abuf.duration) + abuf.duration) % abuf.duration;
+    return Math.max(0, Math.min(abuf.duration, p));
+  }
+  function computePeaks(buf, cols) {
+    cols = cols || 2000;
+    const ch0 = buf.getChannelData(0);
+    const ch1 = buf.numberOfChannels > 1 ? buf.getChannelData(1) : null;
+    const block = Math.max(1, Math.floor(ch0.length / cols));
+    const peaks = new Float32Array(cols);
+    for (let c = 0; c < cols; c++) {
+      let mx = 0;
+      const s = c * block, e = Math.min(ch0.length, s + block);
+      for (let i = s; i < e; i++) {
+        let v = Math.abs(ch0[i]);
+        if (ch1) { const v2 = Math.abs(ch1[i]); if (v2 > v) v = v2; }
+        if (v > mx) mx = v;
+      }
+      peaks[c] = mx;
+    }
+    return peaks;
+  }
+  function layoutWave() {
+    const dpr = window.devicePixelRatio || 1;
+    wave.style.width = stage.clientWidth + "px";
+    wave.style.height = stage.clientHeight + "px";
+    wave.width = Math.round(stage.clientWidth * dpr);
+    wave.height = Math.round(stage.clientHeight * dpr);
+  }
+  function drawWave() {
+    if (!apeaks || !abuf) return;
+    const dpr = window.devicePixelRatio || 1;
+    const c = wave.getContext("2d");
+    const W = wave.width, H = wave.height, mid = H / 2, n = apeaks.length;
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.fillStyle = bgColor || "#0b0e14";
+    c.fillRect(0, 0, W, H);
+    const pos = abuf.duration > 0 ? curAudioPos() / abuf.duration : 0;
+    const bw = Math.max(1, W / n);
+    for (let i = 0; i < n; i++) {
+      const x = (i / n) * W;
+      const a = apeaks[i] * (H * 0.45);
+      c.fillStyle = i / n <= pos ? "#3fb950" : "#4b5566";
+      c.fillRect(x, mid - a, Math.ceil(bw), Math.max(1, a * 2));
+    }
+    c.fillStyle = "#ffffff";
+    c.fillRect(Math.floor(pos * W), 0, Math.max(1, Math.round(dpr)), H);
+  }
+  function updateATime() {
+    if (abuf) atime.textContent = fmtTime(curAudioPos()) + " / " + fmtTime(abuf.duration);
+  }
+  function updateAudioStatus() {
+    if (!abuf) return;
+    statusEl.textContent =
+      `${format}  ·  ${abuf.numberOfChannels}ch  ·  ` +
+      `${Math.round(abuf.sampleRate / 100) / 10} kHz  ·  ${fmtTime(abuf.duration)}`;
+    statusEl.title = statusEl.textContent;
+  }
+  function rafTick() {
+    cancelAnimationFrame(araf);
+    const loop = () => {
+      if (!isAudio) return;
+      drawWave();
+      updateATime();
+      if (aplaying) araf = requestAnimationFrame(loop);
+    };
+    araf = requestAnimationFrame(loop);
+  }
+  function startSource(offset) {
+    asrc = actx.createBufferSource();
+    asrc.buffer = abuf;
+    asrc.loop = aloopBox.checked;
+    asrc.connect(again);
+    asrc.onended = () => {
+      if (!aloopBox.checked && aplaying) {
+        aplaying = false; aoffset = 0; aplay.textContent = "▶";
+        drawWave(); updateATime();
+      }
+    };
+    const off = ((offset % abuf.duration) + abuf.duration) % abuf.duration;
+    asrc.start(0, off);
+    astart = actx.currentTime - off;
+    aplaying = true; aplay.textContent = "⏸";
+    rafTick();
+  }
+  function audioToggle() {
+    if (!abuf) return;
+    if (actx.state === "suspended") actx.resume();
+    if (aplaying) {
+      aoffset = curAudioPos();
+      try { asrc.stop(); } catch {}
+      aplaying = false; aplay.textContent = "▶";
+    } else startSource(aoffset);
+  }
+  function audioStop() {
+    try { if (asrc) asrc.stop(); } catch {}
+    aplaying = false; aoffset = 0; aplay.textContent = "▶";
+    drawWave(); updateATime();
+  }
+  async function decodeAudio() {
+    isAudio = true;
+    viewctl.style.display = "none";
+    audioctl.style.display = "";
+    content.style.display = "none";
+    rulerTop.style.display = "none";
+    rulerLeft.style.display = "none";
+    wave.style.display = "block";
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!actx) actx = new AC();
+    if (!again) {
+      again = actx.createGain();
+      again.gain.value = (avol.value | 0) / 100;
+      again.connect(actx.destination);
+    }
+    try {
+      const ab = fileBytes.buffer.slice(
+        fileBytes.byteOffset,
+        fileBytes.byteOffset + fileBytes.byteLength
+      );
+      abuf = await actx.decodeAudioData(ab);
+    } catch (e) {
+      statusEl.textContent = "Could not decode this audio.";
+      return;
+    }
+    apeaks = computePeaks(abuf);
+    aoffset = 0; aplaying = false; aplay.textContent = "▶";
+    layoutWave(); drawWave(); updateATime(); updateAudioStatus();
+  }
+
   function setZoom(z) {
     zoom = Math.min(64, Math.max(0.05, z));
     applyZoom();
@@ -466,6 +614,23 @@
     applyBg();
     persist();
   };
+  // audio transport
+  aplay.onclick = audioToggle;
+  el("astop").onclick = audioStop;
+  aloopBox.onchange = () => { if (asrc) asrc.loop = aloopBox.checked; };
+  avol.oninput = () => { if (again) again.gain.value = (avol.value | 0) / 100; };
+  wave.addEventListener("mousedown", (e) => {
+    if (!abuf) return;
+    const r = wave.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+    aoffset = frac * abuf.duration;
+    if (aplaying) { try { asrc.stop(); } catch {} startSource(aoffset); }
+    else { drawWave(); updateATime(); }
+  });
+  window.addEventListener("keydown", (e) => {
+    const t = document.activeElement && document.activeElement.tagName;
+    if (isAudio && e.key === " " && t !== "INPUT") { e.preventDefault(); audioToggle(); }
+  });
 
   function savePng() {
     vscode.postMessage({ type: "savePng", data: src.toDataURL("image/png") });
@@ -510,6 +675,7 @@
   window.addEventListener("resize", () => {
     const dprChanged = window.devicePixelRatio !== lastDpr;
     if (dprChanged) { lastDpr = window.devicePixelRatio; buildPresets(); }
+    if (isAudio) { layoutWave(); drawWave(); return; }
     if (fit) fitWidth();
     else if (dprChanged) applyZoom();
     else if (ruler) drawRulers();
@@ -522,8 +688,9 @@
       fileBytes = b64ToBytes(msg.b64);
       isImage = msg.kind === "image";
       isSvg = msg.kind === "svg";
+      isAudio = msg.kind === "audio";
       mime = msg.mime || "";
-      sauce = isImage || isSvg ? null : parseSauce(fileBytes);
+      sauce = isImage || isSvg || isAudio ? null : parseSauce(fileBytes);
       extCode = msg.extCode | 0;
       format = msg.format || "";
       font9 = !!msg.font9;
@@ -545,18 +712,23 @@
       applyBg();
       // decode first so natW/natH are known, then apply remembered zoom (or fit)
       const savedZoom = typeof msg.zoom === "number" ? msg.zoom : 0;
-      if (isSvg) {
-        await decodeSvg();
-      } else if (isImage) {
-        await decodeImage();
+      if (isAudio) {
+        await decodeAudio();
       } else {
-        await loadWasm();
-        decodeAndRender();
+        // ensure the audio UI is torn down + the view UI restored
+        audioStop();
+        audioctl.style.display = "none";
+        viewctl.style.display = "";
+        wave.style.display = "none";
+        content.style.display = "";
+        if (isSvg) await decodeSvg();
+        else if (isImage) await decodeImage();
+        else { await loadWasm(); decodeAndRender(); }
+        layoutRulers();
+        if (fit) fitWidth();
+        else if (savedZoom > 0) setZoom(savedZoom);
+        else fitWidth();
       }
-      layoutRulers();
-      if (fit) fitWidth();
-      else if (savedZoom > 0) setZoom(savedZoom);
-      else fitWidth();
     } else if (msg.type === "command") {
       if (msg.name === "toggleFont9px") { font9box.checked = !font9box.checked; font9box.onchange(); }
       else if (msg.name === "savePng") savePng();
