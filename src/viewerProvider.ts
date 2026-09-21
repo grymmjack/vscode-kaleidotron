@@ -10,6 +10,7 @@ const EXT_CODE: Record<string, number> = {
   // Raster formats decoded by the wasm (browser can't do these natively).
   pcx: 10, psd: 11, xcf: 12, ase: 13, aseprite: 13, iff: 14, ilbm: 14, lbm: 14,
   tga: 15, tiff: 16, tif: 16, qoi: 17, pnm: 18, ppm: 18, pgm: 18, pbm: 18, ff: 19,
+  petmate: 20,
 };
 
 /** Human-readable format name per ext-code (shown in the status bar). */
@@ -17,7 +18,7 @@ const FORMAT_NAME: Record<number, string> = {
   0: "ANSI", 1: "XBIN", 2: "XBIN", 3: "BIN", 4: "TundraDraw",
   5: "iCE Draw", 6: "Artworx", 7: "PETSCII", 8: "PETSCII", 9: "RIPscript",
   10: "PCX", 11: "PSD", 12: "GIMP XCF", 13: "Aseprite", 14: "IFF/ILBM",
-  15: "TGA", 16: "TIFF", 17: "QOI", 18: "PNM", 19: "farbfeld",
+  15: "TGA", 16: "TIFF", 17: "QOI", 18: "PNM", 19: "farbfeld", 20: "petmate",
 };
 
 /** Raster extensions the WEBVIEW decodes natively (browser codec, no wasm). */

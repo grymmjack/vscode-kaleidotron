@@ -56,6 +56,7 @@
     "seq": "kt_petscii",
     "pet": "kt_petscii",
     "bin": "kt_bin",
-    "rip": "kt_rip"
+    "rip": "kt_rip",
+    "petmate": "kt_petscii"
   }
 }

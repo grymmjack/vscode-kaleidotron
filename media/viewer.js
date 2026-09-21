@@ -132,7 +132,8 @@
   // Graphics (raster images, SVG, RIPscript, and the wasm raster formats
   // PCX/PSD/XCF/…) → ruler/status in PIXELS, no character-cell or font concept.
   function isGraphics() {
-    return isImage || isSvg || extCode >= 9;
+    // RIP (9) + raster (10–19) are pixel graphics; petmate (20) is a C64 cell grid.
+    return isImage || isSvg || (extCode >= 9 && extCode <= 19);
   }
 
   /** Render an SVG natively (browser vector rasteriser) into the source canvas. */
@@ -168,7 +169,7 @@
   }
   function cellSize() {
     if (isGraphics()) return { w: 1, h: 1 }; // ruler counts pixels
-    if (extCode === 7 || extCode === 8) return { w: 8, h: 8 }; // PETSCII (C64)
+    if (extCode === 7 || extCode === 8 || extCode === 20) return { w: 8, h: 8 }; // PETSCII / petmate (C64)
     return { w: font9 ? 9 : 8, h: 16 };
   }
 
@@ -216,7 +217,7 @@
   }
 
   function defaultFont() {
-    return extCode === 7 || extCode === 8 ? "C64" : "IBM VGA";
+    return extCode === 7 || extCode === 8 || extCode === 20 ? "C64" : "IBM VGA";
   }
 
   function updateStatus() {
