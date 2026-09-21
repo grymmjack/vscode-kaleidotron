@@ -2,7 +2,7 @@
   "name": "vscode-kaleidotron",
   "displayName": "Kaleidotron — Text-mode & Scene Art Viewer",
   "description": "Native viewers for ANSI/ASCII, XBIN, BIN, TundraDraw, iCE Draw, Artworx, PETSCII and more — authentic CP437/VGA & C64 rendering, powered by kaleidotron's Rust decoders compiled to WebAssembly.",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "publisher": "grymmjack",
   "license": "MIT",
   "engines": {
@@ -257,7 +257,9 @@
           ".ans",
           ".nfo",
           ".diz",
-          ".cia"
+          ".cia",
+          ".asc",
+          ".msg"
         ],
         "icon": {
           "light": "./media/icons/ansi.svg",
