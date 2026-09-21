@@ -46,6 +46,8 @@ const AUDIO_EXTS = new Set([
 ]);
 /** Tracker modules the WASM renders to PCM (xmrs) → the same waveform player. */
 const TRACKER_EXTS = new Set(["mod", "xm", "s3m", "it"]);
+/** Palettes — a swatch grid with RGB/HSV/HEX copy (parsed in the webview). */
+const PALETTE_EXTS = new Set(["gpl", "pal", "act", "aco", "hex"]);
 /** Fonts — a rendered preview with Display-as / custom-text / glyph-grid controls. */
 const FONT_EXTS = new Set([
   "ttf", "otf", "ttc", "otc", "fon", "fnt", "psf", "tdf",
@@ -161,10 +163,13 @@ export class TextmodeViewerProvider
     const isRad = RAD_EXTS.has(ext);
     const isMidi = MIDI_EXTS.has(ext);
     const isFont = FONT_EXTS.has(ext);
-    // svg + raster images + native audio → the browser; tracker/rad/midi → wasm
-    // PCM synthesis; fonts → the wasm font renderer; else → the wasm decoders.
-    const kind = isFont
-      ? "font"
+    const isPalette = PALETTE_EXTS.has(ext);
+    // palettes → a swatch grid (webview-parsed); svg + raster images + native
+    // audio → the browser; tracker/rad/midi → wasm PCM; fonts → wasm font
+    // renderer; else → the wasm decoders.
+    const kind = isPalette
+      ? "palette"
+      : isFont ? "font"
       : isRad ? "rad"
       : isMidi ? "midi"
       : isTracker ? "tracker"
@@ -182,8 +187,11 @@ export class TextmodeViewerProvider
       mime: isImage ? imageMime(ext) : isSvg ? "image/svg+xml" : isAudio ? audioMime(ext) : "",
       // MIDI needs a General MIDI SoundFont to synthesize.
       sf2: isMidi ? soundfontB64() : "",
+      autoplay: gs.get<boolean>("view.autoplay", false),
       extCode: EXT_CODE[ext] ?? 0,
-      format: isSvg ? "SVG" : musical || isImage ? ext.toUpperCase() : FORMAT_NAME[EXT_CODE[ext] ?? 0],
+      format: isSvg
+        ? "SVG"
+        : musical || isImage || isPalette ? ext.toUpperCase() : FORMAT_NAME[EXT_CODE[ext] ?? 0],
       font9: gs.get<boolean>("view.font9", true),
       background: cfg.get<string>("background", "black"),
       name: basename(doc.uri.fsPath),
@@ -212,6 +220,12 @@ export class TextmodeViewerProvider
       case "openMenu":
         await this.openMenu(doc);
         break;
+      case "copy":
+        if (typeof msg.text === "string") {
+          await vscode.env.clipboard.writeText(msg.text);
+          vscode.window.setStatusBarMessage(`Copied ${msg.text}`, 2000);
+        }
+        break;
       case "openInKaleidotron":
         this.launchKaleidotron(doc.uri);
         break;
@@ -227,6 +241,8 @@ export class TextmodeViewerProvider
           await this.ctx.globalState.update("view.ruler", msg.ruler);
         if (typeof msg.fit === "boolean")
           await this.ctx.globalState.update("view.fit", msg.fit);
+        if (typeof msg.autoplay === "boolean")
+          await this.ctx.globalState.update("view.autoplay", msg.autoplay);
         if (typeof msg.bg === "string")
           await this.ctx.globalState.update("view.bg", msg.bg);
         break;
@@ -351,7 +367,8 @@ export class TextmodeViewerProvider
     const csp = [
       `default-src 'none'`,
       `img-src ${webview.cspSource} data: blob:`,
-      `style-src ${webview.cspSource}`,
+      // 'unsafe-inline' lets the palette swatches set their background colour.
+      `style-src ${webview.cspSource} 'unsafe-inline'`,
       `font-src ${webview.cspSource}`,
       // 'wasm-unsafe-eval' lets the webview instantiate the .wasm module.
       `script-src 'nonce-${nonce}' 'wasm-unsafe-eval'`,
@@ -389,10 +406,18 @@ export class TextmodeViewerProvider
     </span>
     <span id="audioctl" style="display:none">
       <button id="aplay" title="Play / Pause (Space)">▶</button>
-      <button id="astop" title="Stop">■</button>
+      <button id="astop" title="Stop (Home = rewind)">■</button>
       <label class="tgl"><input type="checkbox" id="aloop" /> Loop</label>
+      <label class="tgl" title="Play automatically on open"><input type="checkbox" id="aautoplay" /> Auto-play</label>
       <span id="atime">0:00 / 0:00</span>
       <span class="volwrap" title="Volume">🔊<input type="range" id="avol" min="0" max="100" value="100" /></span>
+    </span>
+    <span id="palctl" style="display:none">
+      <span class="lbl">Copy:</span>
+      <button class="cpf" id="cpHex" data-f="hex">HEX</button>
+      <button class="cpf" id="cpRgb" data-f="rgb">RGB</button>
+      <button class="cpf" id="cpHsv" data-f="hsv">HSV</button>
+      <span id="palinfo" class="lbl"></span>
     </span>
     <button id="openExt" title="Open in default app">Open in…</button>
     <button id="openKt" title="Open in Kaleidotron">Kaleidotron</button>
@@ -402,6 +427,7 @@ export class TextmodeViewerProvider
     <canvas id="rulerTop" class="ruler"></canvas>
     <canvas id="rulerLeft" class="ruler"></canvas>
     <canvas id="wave" style="display:none"></canvas>
+    <div id="palgrid" style="display:none"></div>
   </div>
   <div id="status"></div>
   <script nonce="${nonce}">window.__WASM_URI__ = ${JSON.stringify(

@@ -56,6 +56,14 @@ decoders compiled to **WebAssembly**.
 | RAD (Reality Adlib Tracker) | `.rad` | OPL3 FM (wasm) |
 | MIDI | `.mid .midi .kar .rmi` | rustysynth + a SoundFont² (wasm) |
 
+Player: **Space** = play/pause · **Home** = rewind · click the waveform to seek ·
+Loop · Volume · **Auto-play** (remembered).
+
+### 🎨 Palettes (swatch grid — click to copy HEX / RGB / HSV)
+| Format | Extensions |
+| --- | --- |
+| GIMP · JASC/RIFF/raw · Adobe | `.gpl` · `.pal` · `.act .aco` · `.hex`¹ |
+
 ¹ Registered **opt-in** (right-click → *Reopen Editor With…*) to avoid hijacking
 common extensions (`.bin`, `.txt`, `.mod`↔`go.mod`, `.asc`, `.msg`). Everything
 else opens by default.

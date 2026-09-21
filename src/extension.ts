@@ -40,6 +40,15 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.registerCustomEditorProvider("kaleidotron.tracker", provider, {
       webviewOptions: { retainContextWhenHidden: true },
       supportsMultipleEditorsPerDocument: false,
+    }),
+    // Palettes (.gpl/.pal/.act/.aco, opt-in .hex) — a swatch grid with copy.
+    vscode.window.registerCustomEditorProvider("kaleidotron.palette", provider, {
+      webviewOptions: { retainContextWhenHidden: true },
+      supportsMultipleEditorsPerDocument: false,
+    }),
+    vscode.window.registerCustomEditorProvider("kaleidotron.palette.opt", provider, {
+      webviewOptions: { retainContextWhenHidden: true },
+      supportsMultipleEditorsPerDocument: false,
     })
   );
 

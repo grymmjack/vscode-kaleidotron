@@ -22,6 +22,9 @@
   let isSvg = false; // SVG rendered natively by the browser
   let isAudio = false; // audio (mp3/wav/ogg/flac/…) via Web Audio
   let isFont = false; // font preview (TTF/OTF/FON/…/TDF) with sample/grid controls
+  let isPalette = false; // palette swatch grid (.gpl/.pal/.act/.aco/.hex)
+  let autoplay = false; // start audio/music automatically on open
+  let copyFormat = "hex"; // palette swatch copy format: hex | rgb | hsv
   let mime = "";
   // Web Audio state
   let actx = null, abuf = null, asrc = null, again = null;
@@ -52,8 +55,12 @@
   const aloopBox = /** @type {HTMLInputElement} */ (el("aloop"));
   const atime = el("atime");
   const avol = /** @type {HTMLInputElement} */ (el("avol"));
+  const aautoplay = /** @type {HTMLInputElement} */ (el("aautoplay"));
   const fontctl = el("fontctl");
   const ftext = /** @type {HTMLInputElement} */ (el("ftext"));
+  const palctl = el("palctl");
+  const palgrid = el("palgrid");
+  const palinfo = el("palinfo");
 
   // Pangrams + typography sayings for the 🎲 Random button (pangrams exercise
   // every letter — ideal for a font preview).
@@ -343,6 +350,156 @@
     stage.style.background = bgColor || "";
   }
 
+  // ---- palette viewer ----
+  const hex2 = (v) => Math.max(0, Math.min(255, v | 0)).toString(16).padStart(2, "0");
+  function rgb2hex(r, g, b) {
+    return ("#" + hex2(r) + hex2(g) + hex2(b)).toUpperCase();
+  }
+  function rgb2hsv(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    let h = 0;
+    if (d) {
+      if (mx === r) h = ((g - b) / d) % 6;
+      else if (mx === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h *= 60;
+      if (h < 0) h += 360;
+    }
+    return { h: Math.round(h), s: Math.round((mx ? d / mx : 0) * 100), v: Math.round(mx * 100) };
+  }
+  function fmtColor(c, fmt) {
+    if (fmt === "rgb") return `rgb(${c.r}, ${c.g}, ${c.b})`;
+    if (fmt === "hsv") { const h = rgb2hsv(c.r, c.g, c.b); return `hsv(${h.h}, ${h.s}%, ${h.v}%)`; }
+    return rgb2hex(c.r, c.g, c.b);
+  }
+  function parseGpl(t) {
+    let name = "", colors = [];
+    for (const line of t.split(/\r?\n/)) {
+      if (/^GIMP Palette/i.test(line)) continue;
+      const nm = line.match(/^Name:\s*(.+)/i);
+      if (nm) { name = nm[1].trim(); continue; }
+      if (line.startsWith("#") || !line.trim()) continue;
+      const m = line.trim().match(/^(\d+)\s+(\d+)\s+(\d+)(?:\s+(.*))?$/);
+      if (m) colors.push({ r: +m[1], g: +m[2], b: +m[3], name: (m[4] || "").trim() });
+    }
+    return { name, colors };
+  }
+  function parseJasc(t) {
+    const lines = t.split(/\r?\n/), colors = [];
+    for (let i = 3; i < lines.length; i++) {
+      const m = lines[i].trim().match(/^(\d+)\s+(\d+)\s+(\d+)/);
+      if (m) colors.push({ r: +m[1], g: +m[2], b: +m[3] });
+    }
+    return { name: "JASC palette", colors };
+  }
+  function parseHexList(t) {
+    const colors = [];
+    for (const line of t.split(/\r?\n/)) {
+      const m = line.trim().match(/^#?([0-9a-f]{6})\b/i);
+      if (m) colors.push({ r: parseInt(m[1].slice(0, 2), 16), g: parseInt(m[1].slice(2, 4), 16), b: parseInt(m[1].slice(4, 6), 16) });
+    }
+    return { name: "Hex list", colors };
+  }
+  function parseRawRGB(bytes, count, name) {
+    const colors = [];
+    const n = Math.min(count, Math.floor(bytes.length / 3));
+    for (let i = 0; i < n; i++) colors.push({ r: bytes[i * 3], g: bytes[i * 3 + 1], b: bytes[i * 3 + 2] });
+    return { name, colors };
+  }
+  function parseRiff(bytes) {
+    const colors = [];
+    let i = 12;
+    while (i + 8 <= bytes.length) {
+      const id = String.fromCharCode(bytes[i], bytes[i + 1], bytes[i + 2], bytes[i + 3]);
+      const sz = bytes[i + 4] | (bytes[i + 5] << 8) | (bytes[i + 6] << 16) | (bytes[i + 7] << 24);
+      const start = i + 8;
+      if (id === "data") {
+        const count = bytes[start + 2] | (bytes[start + 3] << 8);
+        let p = start + 4;
+        for (let c = 0; c < count && p + 3 <= bytes.length; c++) {
+          colors.push({ r: bytes[p], g: bytes[p + 1], b: bytes[p + 2] });
+          p += 4;
+        }
+        break;
+      }
+      i = start + sz + (sz & 1);
+    }
+    return { name: "RIFF palette", colors };
+  }
+  function parseAco(bytes) {
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    if (dv.byteLength < 4) return { name: "Adobe Color", colors: [] };
+    const count = dv.getUint16(2); // v1 count
+    const colors = [];
+    let p = 4;
+    for (let i = 0; i < count && p + 10 <= dv.byteLength; i++) {
+      const cs = dv.getUint16(p), w = dv.getUint16(p + 2), x = dv.getUint16(p + 4), y = dv.getUint16(p + 6);
+      p += 10;
+      if (cs === 0) colors.push({ r: Math.round(w / 257), g: Math.round(x / 257), b: Math.round(y / 257) });
+      else if (cs === 2) { // CMYK (stored inverted)
+        const c = 1 - w / 65535, m = 1 - x / 65535, ye = 1 - y / 65535, k = 1 - dv.getUint16(p - 2) / 65535;
+        colors.push({ r: Math.round(255 * (1 - c) * (1 - k)), g: Math.round(255 * (1 - m) * (1 - k)), b: Math.round(255 * (1 - ye) * (1 - k)) });
+      } else colors.push({ r: 0, g: 0, b: 0 });
+    }
+    return { name: "Adobe Color", colors };
+  }
+  function parsePalette(bytes, ext) {
+    const t = new TextDecoder("latin1").decode(bytes);
+    if (ext === "gpl") return parseGpl(t);
+    if (ext === "hex") return parseHexList(t);
+    if (ext === "aco") return parseAco(bytes);
+    if (ext === "act") {
+      const count = bytes.length >= 770 ? (bytes[768] << 8) | bytes[769] : 256;
+      return parseRawRGB(bytes, count || 256, "Adobe Color Table");
+    }
+    // .pal — JASC text, RIFF binary, or raw 768.
+    if (/^JASC-PAL/.test(t)) return parseJasc(t);
+    if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46) return parseRiff(bytes);
+    if (bytes.length >= 768) return parseRawRGB(bytes, Math.floor(bytes.length / 3), "Palette");
+    return parseJasc(t);
+  }
+  function renderPalette() {
+    const ext = (format || "").toLowerCase();
+    const parsed = parsePalette(fileBytes, ext) || { name: "", colors: [] };
+    const colors = parsed.colors;
+    palgrid.textContent = "";
+    colors.forEach((c, i) => {
+      const hsv = rgb2hsv(c.r, c.g, c.b);
+      const sw = document.createElement("div");
+      sw.className = "sw";
+      sw.style.background = rgb2hex(c.r, c.g, c.b);
+      sw.title =
+        `${i}: ${rgb2hex(c.r, c.g, c.b)}  ·  rgb(${c.r}, ${c.g}, ${c.b})  ·  ` +
+        `hsv(${hsv.h}, ${hsv.s}%, ${hsv.v}%)` + (c.name ? "  ·  " + c.name : "");
+      sw.onclick = () => {
+        vscode.postMessage({ type: "copy", text: fmtColor(c, copyFormat) });
+        sw.classList.add("copied");
+        setTimeout(() => sw.classList.remove("copied"), 350);
+      };
+      palgrid.appendChild(sw);
+    });
+    palinfo.textContent = (parsed.name ? parsed.name + "  ·  " : "") + `${colors.length} colors`;
+    statusEl.textContent = `${format}  ·  ${parsed.name || "palette"}  ·  ${colors.length} colors  ·  click a swatch to copy ${copyFormat.toUpperCase()}`;
+    statusEl.title = statusEl.textContent;
+  }
+  function updateCopyButtons() {
+    for (const b of document.querySelectorAll("#palctl .cpf"))
+      b.classList.toggle("on", b.getAttribute("data-f") === copyFormat);
+  }
+  function showPaletteUI() {
+    viewctl.style.display = "none";
+    audioctl.style.display = "none";
+    fontctl.style.display = "none";
+    content.style.display = "none";
+    wave.style.display = "none";
+    rulerTop.style.display = "none";
+    rulerLeft.style.display = "none";
+    palctl.style.display = "";
+    palgrid.style.display = "block";
+    updateCopyButtons();
+  }
+
   // ---- audio player (Web Audio) ----
   function fmtTime(s) {
     s = Math.max(0, s || 0);
@@ -470,6 +627,12 @@
     apeaks = computePeaks(abuf);
     aoffset = 0; aplaying = false; aplay.textContent = "▶";
     layoutWave(); drawWave(); updateATime(); updateAudioStatus();
+    if (autoplay) audioToggle(); // start (browser autoplay policy may defer to a click)
+  }
+  function audioRewind() {
+    aoffset = 0;
+    if (aplaying) { try { asrc.stop(); } catch {} startSource(0); }
+    else { drawWave(); updateATime(); }
   }
   async function decodeAudio() {
     showAudioUI();
@@ -683,7 +846,7 @@
   function persist() {
     clearTimeout(persistT);
     persistT = setTimeout(() => {
-      vscode.postMessage({ type: "persist", font9, zoom, center, ruler, fit, bg: bgColor });
+      vscode.postMessage({ type: "persist", font9, zoom, center, ruler, fit, autoplay, bg: bgColor });
     }, 250);
   }
 
@@ -739,7 +902,9 @@
   });
   window.addEventListener("keydown", (e) => {
     const t = document.activeElement && document.activeElement.tagName;
-    if (isAudio && e.key === " " && t !== "INPUT") { e.preventDefault(); audioToggle(); }
+    if (!isAudio || t === "INPUT") return;
+    if (e.key === " ") { e.preventDefault(); audioToggle(); }
+    else if (e.key === "Home") { e.preventDefault(); audioRewind(); }
   });
   // font controls: custom sample text + a random typography phrase
   let ftextT = 0;
@@ -750,6 +915,19 @@
   el("frandom").onclick = () => {
     ftext.value = PHRASES[Math.floor(Math.random() * PHRASES.length)];
     decodeFont();
+  };
+  // palette copy-format buttons
+  for (const b of palctl.querySelectorAll(".cpf")) {
+    b.onclick = () => {
+      copyFormat = b.getAttribute("data-f");
+      updateCopyButtons();
+      if (isPalette) renderPalette();
+    };
+  }
+  // audio: auto-play preference
+  aautoplay.onchange = () => {
+    autoplay = aautoplay.checked;
+    persist();
   };
 
   function savePng() {
@@ -809,7 +987,10 @@
       isImage = msg.kind === "image";
       isSvg = msg.kind === "svg";
       isFont = msg.kind === "font";
+      isPalette = msg.kind === "palette";
       isAudio = ["audio", "tracker", "rad", "midi"].includes(msg.kind);
+      autoplay = !!msg.autoplay;
+      aautoplay.checked = autoplay;
       mime = msg.mime || "";
       sauce = isImage || isSvg || isAudio ? null : parseSauce(fileBytes);
       extCode = msg.extCode | 0;
@@ -833,15 +1014,23 @@
       applyBg();
       // decode first so natW/natH are known, then apply remembered zoom (or fit)
       const savedZoom = typeof msg.zoom === "number" ? msg.zoom : 0;
-      if (isAudio) {
+      if (isPalette) {
+        audioStop();
+        showPaletteUI();
+        renderPalette();
+      } else if (isAudio) {
+        palctl.style.display = "none";
+        palgrid.style.display = "none";
         if (msg.kind === "tracker") await decodeTracker();
         else if (msg.kind === "rad") await decodeRad();
         else if (msg.kind === "midi") await decodeMidi(msg.sf2);
         else await decodeAudio();
       } else {
-        // ensure the audio UI is torn down + the view UI restored
+        // ensure the audio + palette UI are torn down + the view UI restored
         audioStop();
         audioctl.style.display = "none";
+        palctl.style.display = "none";
+        palgrid.style.display = "none";
         viewctl.style.display = "";
         wave.style.display = "none";
         content.style.display = "";
