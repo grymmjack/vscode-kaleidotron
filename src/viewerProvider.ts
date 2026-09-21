@@ -17,6 +17,7 @@ const EXT_CODE: Record<string, number> = {
   f08: 22, f09: 22, f10: 22, f11: 22, f12: 22, f13: 22, f14: 22, f15: 22,
   f16: 22, f17: 22, f18: 22, f19: 22, f20: 22,
   tdf: 23,
+  bsv: 25, bsave: 25, // QB64/BASIC BSAVE image
 };
 
 /** Human-readable format name per ext-code (shown in the status bar). */
@@ -25,7 +26,7 @@ const FORMAT_NAME: Record<number, string> = {
   5: "iCE Draw", 6: "Artworx", 7: "PETSCII", 8: "PETSCII", 9: "RIPscript",
   10: "PCX", 11: "PSD", 12: "GIMP XCF", 13: "Aseprite", 14: "IFF/ILBM",
   15: "TGA", 16: "TIFF", 17: "QOI", 18: "PNM", 19: "farbfeld", 20: "petmate",
-  21: "Font", 22: "Bitmap font", 23: "TheDraw font",
+  21: "Font", 22: "Bitmap font", 23: "TheDraw font", 25: "BSAVE",
 };
 
 /** Raster extensions the WEBVIEW decodes natively (browser codec, no wasm). */
