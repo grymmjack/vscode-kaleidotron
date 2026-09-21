@@ -50,7 +50,19 @@
     if (wasm) return;
     const resp = await fetch(window.__WASM_URI__);
     const buf = await resp.arrayBuffer();
-    const { instance } = await WebAssembly.instantiate(buf, {});
+    // The module carries a few wasm-bindgen imports (pulled transitively by
+    // retrofont→zip→getrandom/time) that are never called on the decode path.
+    // Provide no-op stubs so the no-bindgen module instantiates.
+    const stub = new Proxy({}, {
+      get: (_, n) => {
+        const s = String(n);
+        if (s.includes("throw")) return () => { throw new Error("wasm throw"); };
+        if (s.includes("grow")) return () => 0;
+        return () => {};
+      },
+    });
+    const imports = new Proxy({}, { get: () => stub });
+    const { instance } = await WebAssembly.instantiate(buf, imports);
     wasm = instance;
   }
   function mem() {
@@ -132,8 +144,9 @@
   // Graphics (raster images, SVG, RIPscript, and the wasm raster formats
   // PCX/PSD/XCF/…) → ruler/status in PIXELS, no character-cell or font concept.
   function isGraphics() {
-    // RIP (9) + raster (10–19) are pixel graphics; petmate (20) is a C64 cell grid.
-    return isImage || isSvg || (extCode >= 9 && extCode <= 19);
+    // RIP (9), raster (10–19) and font previews (21–23) are pixel graphics;
+    // petmate (20) is a C64 cell grid.
+    return isImage || isSvg || (extCode >= 9 && extCode !== 20);
   }
 
   /** Render an SVG natively (browser vector rasteriser) into the source canvas. */

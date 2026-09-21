@@ -35,6 +35,9 @@
     },
     "kt_rip": {
       "iconPath": "./icons/rip.svg"
+    },
+    "kt_font": {
+      "iconPath": "./icons/font.svg"
     }
   },
   "file": "_file",
@@ -57,6 +60,27 @@
     "pet": "kt_petscii",
     "bin": "kt_bin",
     "rip": "kt_rip",
-    "petmate": "kt_petscii"
+    "petmate": "kt_petscii",
+    "ttf": "kt_font",
+    "otf": "kt_font",
+    "ttc": "kt_font",
+    "otc": "kt_font",
+    "fon": "kt_font",
+    "fnt": "kt_font",
+    "psf": "kt_font",
+    "tdf": "kt_font",
+    "f08": "kt_font",
+    "f09": "kt_font",
+    "f10": "kt_font",
+    "f11": "kt_font",
+    "f12": "kt_font",
+    "f13": "kt_font",
+    "f14": "kt_font",
+    "f15": "kt_font",
+    "f16": "kt_font",
+    "f17": "kt_font",
+    "f18": "kt_font",
+    "f19": "kt_font",
+    "f20": "kt_font"
   }
 }

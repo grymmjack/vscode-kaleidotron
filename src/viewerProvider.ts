@@ -11,6 +11,12 @@ const EXT_CODE: Record<string, number> = {
   pcx: 10, psd: 11, xcf: 12, ase: 13, aseprite: 13, iff: 14, ilbm: 14, lbm: 14,
   tga: 15, tiff: 16, tif: 16, qoi: 17, pnm: 18, ppm: 18, pgm: 18, pbm: 18, ff: 19,
   petmate: 20,
+  // Font previews (rendered sample). TTF/OTF (21), raw bitmap (22), TheDraw (23).
+  ttf: 21, otf: 21, ttc: 21, otc: 21,
+  fon: 22, fnt: 22, psf: 22,
+  f08: 22, f09: 22, f10: 22, f11: 22, f12: 22, f13: 22, f14: 22, f15: 22,
+  f16: 22, f17: 22, f18: 22, f19: 22, f20: 22,
+  tdf: 23,
 };
 
 /** Human-readable format name per ext-code (shown in the status bar). */
@@ -19,6 +25,7 @@ const FORMAT_NAME: Record<number, string> = {
   5: "iCE Draw", 6: "Artworx", 7: "PETSCII", 8: "PETSCII", 9: "RIPscript",
   10: "PCX", 11: "PSD", 12: "GIMP XCF", 13: "Aseprite", 14: "IFF/ILBM",
   15: "TGA", 16: "TIFF", 17: "QOI", 18: "PNM", 19: "farbfeld", 20: "petmate",
+  21: "Font", 22: "Bitmap font", 23: "TheDraw font",
 };
 
 /** Raster extensions the WEBVIEW decodes natively (browser codec, no wasm). */

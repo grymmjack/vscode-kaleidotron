@@ -2,7 +2,7 @@
   "name": "vscode-kaleidotron",
   "displayName": "Kaleidotron — Text-mode & Scene Art Viewer",
   "description": "Native viewers for ANSI/ASCII, XBIN, BIN, TundraDraw, iCE Draw, Artworx, PETSCII and more — authentic CP437/VGA & C64 rendering, powered by kaleidotron's Rust decoders compiled to WebAssembly.",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "publisher": "grymmjack",
   "license": "MIT",
   "engines": {
@@ -193,6 +193,76 @@
           }
         ],
         "priority": "default"
+      },
+      {
+        "viewType": "kaleidotron.font",
+        "displayName": "Kaleidotron Font Preview",
+        "selector": [
+          {
+            "filenamePattern": "*.ttf"
+          },
+          {
+            "filenamePattern": "*.otf"
+          },
+          {
+            "filenamePattern": "*.ttc"
+          },
+          {
+            "filenamePattern": "*.otc"
+          },
+          {
+            "filenamePattern": "*.fon"
+          },
+          {
+            "filenamePattern": "*.fnt"
+          },
+          {
+            "filenamePattern": "*.psf"
+          },
+          {
+            "filenamePattern": "*.tdf"
+          },
+          {
+            "filenamePattern": "*.f08"
+          },
+          {
+            "filenamePattern": "*.f09"
+          },
+          {
+            "filenamePattern": "*.f10"
+          },
+          {
+            "filenamePattern": "*.f11"
+          },
+          {
+            "filenamePattern": "*.f12"
+          },
+          {
+            "filenamePattern": "*.f13"
+          },
+          {
+            "filenamePattern": "*.f14"
+          },
+          {
+            "filenamePattern": "*.f15"
+          },
+          {
+            "filenamePattern": "*.f16"
+          },
+          {
+            "filenamePattern": "*.f17"
+          },
+          {
+            "filenamePattern": "*.f18"
+          },
+          {
+            "filenamePattern": "*.f19"
+          },
+          {
+            "filenamePattern": "*.f20"
+          }
+        ],
+        "priority": "default"
       }
     ],
     "commands": [
@@ -346,6 +416,39 @@
         "icon": {
           "light": "./media/icons/rip.svg",
           "dark": "./media/icons/rip.svg"
+        }
+      },
+      {
+        "id": "kt-font",
+        "aliases": [
+          "Font"
+        ],
+        "extensions": [
+          ".ttf",
+          ".otf",
+          ".ttc",
+          ".otc",
+          ".fon",
+          ".fnt",
+          ".psf",
+          ".tdf",
+          ".f08",
+          ".f09",
+          ".f10",
+          ".f11",
+          ".f12",
+          ".f13",
+          ".f14",
+          ".f15",
+          ".f16",
+          ".f17",
+          ".f18",
+          ".f19",
+          ".f20"
+        ],
+        "icon": {
+          "light": "./media/icons/font.svg",
+          "dark": "./media/icons/font.svg"
         }
       }
     ],

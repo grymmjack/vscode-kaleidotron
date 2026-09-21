@@ -25,6 +25,11 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.registerCustomEditorProvider("kaleidotron.graphics", provider, {
       webviewOptions: { retainContextWhenHidden: true },
       supportsMultipleEditorsPerDocument: false,
+    }),
+    // TTF/OTF, FON/FNT/PSF/.fXX bitmap fonts, TheDraw .tdf — a rendered preview.
+    vscode.window.registerCustomEditorProvider("kaleidotron.font", provider, {
+      webviewOptions: { retainContextWhenHidden: true },
+      supportsMultipleEditorsPerDocument: false,
     })
   );
 
