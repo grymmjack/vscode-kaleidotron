@@ -53,9 +53,42 @@
   const atime = el("atime");
   const avol = /** @type {HTMLInputElement} */ (el("avol"));
   const fontctl = el("fontctl");
-  const fmodeCustom = /** @type {HTMLInputElement} */ (el("fmodeCustom"));
   const ftext = /** @type {HTMLInputElement} */ (el("ftext"));
-  const fgrid = /** @type {HTMLInputElement} */ (el("fgrid"));
+
+  // Pangrams + typography sayings for the 🎲 Random button (pangrams exercise
+  // every letter — ideal for a font preview).
+  const PHRASES = [
+    "The quick brown fox jumps over the lazy dog",
+    "Pack my box with five dozen liquor jugs",
+    "How vexingly quick daft zebras jump!",
+    "Sphinx of black quartz, judge my vow",
+    "The five boxing wizards jump quickly",
+    "Jackdaws love my big sphinx of quartz",
+    "Waltz, bad nymph, for quick jigs vex",
+    "Glib jocks quiz nymph to vex dwarf",
+    "Bright vixens jump; dozy fowl quack",
+    "Quick zephyrs blow, vexing daft Jim",
+    "Two driven jocks help fax my big quiz",
+    "Five quacking zephyrs jolt my wax bed",
+    "The jay, pig, fox, zebra and my wolves quack!",
+    "Crazy Fredrick bought many very exquisite opal jewels",
+    "We promptly judged antique ivory buckles for the next prize",
+    "A wizard's job is to vex chumps quickly in fog",
+    "Watch Jeopardy!, Alex Trebek's fun TV quiz game",
+    "Amazingly few discotheques provide jukeboxes",
+    "The wizard quickly jinxed the gnomes before they vaporized",
+    "Woven silk pyjamas exchanged for blue quartz",
+    "Grumpy wizards make toxic brew for the evil queen and jack",
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    "abcdefghijklmnopqrstuvwxyz",
+    "0123456789 !@#$%^&*()-=+",
+    "Handgloves",
+    "Type is a beautiful group of letters, not a group of beautiful letters",
+    "The details are not the details; they make the design",
+    "Typography is what language looks like",
+    "Good design is as little design as possible",
+    "White space is to be regarded as an active element",
+  ];
   const rulerTop = /** @type {HTMLCanvasElement} */ (el("rulerTop"));
   const rulerLeft = /** @type {HTMLCanvasElement} */ (el("rulerLeft"));
 
@@ -117,25 +150,24 @@
     applyZoom();
   }
 
-  /** Render a font: sample (name / custom text) or the full glyph grid. */
+  /** Render a font: the sample (font name, or custom text) on top + the full
+   *  glyph grid below (mode 2). Empty text → the font's name. */
   async function decodeFont() {
     if (!isFont) return;
     await loadWasm();
     const ex = wasm.exports;
     const ptr = ex.input_ptr(fileBytes.length);
     mem().set(fileBytes, ptr);
-    const grid = fgrid.checked;
-    const text = fmodeCustom.checked && !grid ? ftext.value : "";
-    const enc = new TextEncoder().encode(text);
+    const enc = new TextEncoder().encode(ftext.value);
     const tp = ex.text_ptr(enc.length);
     mem().set(enc, tp);
-    if (!ex.decode_font(extCode, grid ? 1 : 0)) {
+    if (!ex.decode_font(extCode, 2)) {
       statusEl.textContent = "Could not render this font.";
       return;
     }
     const w = ex.out_w(), h = ex.out_h(), len = ex.out_len(), optr = ex.out_ptr();
     if (!w || !h) {
-      statusEl.textContent = "Nothing to render (empty text?).";
+      statusEl.textContent = "Nothing to render.";
       return;
     }
     const bytes = new Uint8ClampedArray(mem().subarray(optr, optr + len));
@@ -143,9 +175,6 @@
     srcCtx.putImageData(new ImageData(bytes, w, h), 0, 0);
     colors = countColors(bytes);
     applyZoom();
-  }
-  function syncFontControls() {
-    ftext.disabled = !fmodeCustom.checked || fgrid.checked;
   }
 
   /** Count distinct opaque RGB values (for the status readout). */
@@ -712,19 +741,16 @@
     const t = document.activeElement && document.activeElement.tagName;
     if (isAudio && e.key === " " && t !== "INPUT") { e.preventDefault(); audioToggle(); }
   });
-  // font controls: Display as Name/Custom, custom text, glyph grid
-  el("fmodeName").onchange = () => { syncFontControls(); decodeFont(); };
-  fmodeCustom.onchange = () => {
-    syncFontControls();
-    if (fmodeCustom.checked && !fgrid.checked) ftext.focus();
-    decodeFont();
-  };
-  fgrid.onchange = () => { syncFontControls(); decodeFont(); };
+  // font controls: custom sample text + a random typography phrase
   let ftextT = 0;
   ftext.addEventListener("input", () => {
     clearTimeout(ftextT);
     ftextT = setTimeout(decodeFont, 200);
   });
+  el("frandom").onclick = () => {
+    ftext.value = PHRASES[Math.floor(Math.random() * PHRASES.length)];
+    decodeFont();
+  };
 
   function savePng() {
     vscode.postMessage({ type: "savePng", data: src.toDataURL("image/png") });
@@ -821,11 +847,7 @@
         content.style.display = "";
         fontctl.style.display = isFont ? "" : "none";
         if (isFont) {
-          el("fmodeName").checked = true;
-          fmodeCustom.checked = false;
-          fgrid.checked = false;
           ftext.value = "";
-          syncFontControls();
           await decodeFont();
         } else if (isSvg) await decodeSvg();
         else if (isImage) await decodeImage();

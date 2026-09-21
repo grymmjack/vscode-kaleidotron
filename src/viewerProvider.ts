@@ -383,11 +383,9 @@ export class TextmodeViewerProvider
       <button id="savePng" title="Save as PNG…">Save PNG</button>
     </span>
     <span id="fontctl" style="display:none">
-      <span class="lbl">Display:</span>
-      <label class="tgl"><input type="radio" name="fmode" id="fmodeName" checked /> Name</label>
-      <label class="tgl"><input type="radio" name="fmode" id="fmodeCustom" /> Custom</label>
-      <input id="ftext" class="ftext" placeholder="sample text…" spellcheck="false" disabled />
-      <label class="tgl"><input type="checkbox" id="fgrid" /> Grid</label>
+      <span class="lbl">Sample:</span>
+      <input id="ftext" class="ftext" placeholder="font name — type to customise…" spellcheck="false" />
+      <button id="frandom" title="Random typography phrase / pangram">🎲</button>
     </span>
     <span id="audioctl" style="display:none">
       <button id="aplay" title="Play / Pause (Space)">▶</button>
