@@ -559,12 +559,15 @@
   function updateATime() {
     if (abuf) atime.textContent = fmtTime(curAudioPos()) + " / " + fmtTime(abuf.duration);
   }
-  function updateAudioStatus() {
+  function updateAudioStatus(armed) {
     if (!abuf) return;
-    statusEl.textContent =
+    let s =
       `${format}  ·  ${abuf.numberOfChannels}ch  ·  ` +
       `${Math.round(abuf.sampleRate / 100) / 10} kHz  ·  ${fmtTime(abuf.duration)}`;
-    statusEl.title = statusEl.textContent;
+    if (armed)
+      s += "  ·  ▶ click or press a key to start (browser blocks auto-play until you interact)";
+    statusEl.textContent = s;
+    statusEl.title = s;
   }
   function rafTick() {
     cancelAnimationFrame(araf);
@@ -627,7 +630,35 @@
     apeaks = computePeaks(abuf);
     aoffset = 0; aplaying = false; aplay.textContent = "▶";
     layoutWave(); drawWave(); updateATime(); updateAudioStatus();
-    if (autoplay) audioToggle(); // start (browser autoplay policy may defer to a click)
+    if (autoplay) tryAutoplay();
+  }
+  /** Attempt autoplay. The browser's autoplay policy leaves a fresh AudioContext
+   *  "suspended" until a user gesture, so resume() may not take — in which case
+   *  we DON'T fake a playing state (that froze the playhead); instead we arm a
+   *  one-shot so the first click/key in the tab starts it. */
+  function tryAutoplay() {
+    if (!abuf || aplaying) return;
+    actx.resume().then(
+      () => { if (actx.state === "running") startSource(0); else armAutoplayGesture(); },
+      () => armAutoplayGesture()
+    );
+  }
+  let autoplayArmed = false;
+  function armAutoplayGesture() {
+    if (autoplayArmed) return;
+    autoplayArmed = true;
+    updateAudioStatus(true);
+    const go = () => {
+      window.removeEventListener("pointerdown", go, true);
+      window.removeEventListener("keydown", go, true);
+      autoplayArmed = false;
+      if (autoplay && !aplaying && abuf) {
+        actx.resume().then(() => { if (actx.state === "running") startSource(0); });
+      }
+      updateAudioStatus();
+    };
+    window.addEventListener("pointerdown", go, true);
+    window.addEventListener("keydown", go, true);
   }
   function audioRewind() {
     aoffset = 0;
