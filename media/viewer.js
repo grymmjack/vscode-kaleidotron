@@ -1047,7 +1047,8 @@
         else fitWidth();
       }
     } else if (msg.type === "command") {
-      if (msg.name === "toggleFont9px") { font9box.checked = !font9box.checked; font9box.onchange(); }
+      if (msg.name === "panic") audioStop(); // stop this viewer's audio (broadcast)
+      else if (msg.name === "toggleFont9px") { font9box.checked = !font9box.checked; font9box.onchange(); }
       else if (msg.name === "savePng") savePng();
       else if (msg.name === "openExternally") vscode.postMessage({ type: "openExternally" });
       else if (msg.name === "openInKaleidotron") vscode.postMessage({ type: "openInKaleidotron" });

@@ -126,8 +126,15 @@ export class TextmodeViewerProvider
 {
   /** The most recently focused viewer panel + its document, for palette commands. */
   private active?: { panel: vscode.WebviewPanel; doc: KtDocument };
+  /** Every live viewer panel, so "Stop all audio" can reach them all. */
+  private panels = new Set<vscode.WebviewPanel>();
 
   constructor(private readonly ctx: vscode.ExtensionContext) {}
+
+  /** Broadcast a command to EVERY open viewer (e.g. the audio panic stop). */
+  relayToAll(name: string): void {
+    for (const p of this.panels) p.webview.postMessage({ type: "command", name });
+  }
 
   async openCustomDocument(uri: vscode.Uri): Promise<KtDocument> {
     const bytes = await vscode.workspace.fs.readFile(uri);
@@ -149,6 +156,8 @@ export class TextmodeViewerProvider
       this.active = { panel, doc };
     };
     track();
+    this.panels.add(panel);
+    panel.onDidDispose(() => this.panels.delete(panel));
     panel.onDidChangeViewState((e) => {
       if (e.webviewPanel.active) track();
     });

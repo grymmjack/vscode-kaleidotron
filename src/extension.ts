@@ -89,6 +89,10 @@ export function activate(context: vscode.ExtensionContext) {
           : "kaleidotron.textmode.opt";
         vscode.commands.executeCommand("vscode.openWith", uri, vt);
       }
+    ),
+    // Panic: stop audio/music in EVERY open viewer at once.
+    vscode.commands.registerCommand("kaleidotron.stopAllAudio", () =>
+      provider.relayToAll("panic")
     )
   );
 }
