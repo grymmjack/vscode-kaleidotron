@@ -171,7 +171,10 @@
     const ex = wasm.exports;
     const ptr = ex.input_ptr(fileBytes.length);
     mem().set(fileBytes, ptr);
-    const enc = new TextEncoder().encode(ftext.value);
+    // A literal "\n" typed in the (single-line) sample box becomes a real newline, so a TheDraw
+    // font can be previewed multi-line — e.g. `chemical\nwarfare` renders on two rows.
+    const sample = ftext.value.replace(/\\n/g, "\n");
+    const enc = new TextEncoder().encode(sample);
     const tp = ex.text_ptr(enc.length);
     mem().set(enc, tp);
     if (!ex.decode_font(extCode, 2)) {
@@ -981,7 +984,16 @@
     ftextT = setTimeout(decodeFont, 200);
   });
   el("frandom").onclick = () => {
-    ftext.value = PHRASES[Math.floor(Math.random() * PHRASES.length)];
+    let phrase = PHRASES[Math.floor(Math.random() * PHRASES.length)];
+    // TheDraw glyphs are very wide, so a whole phrase runs way off-screen. Break it into short
+    // lines (~3 words) with literal "\n" markers — decodeFont turns those into real newlines.
+    if (extCode === 23) {
+      const w = phrase.split(/\s+/);
+      const lines = [];
+      for (let i = 0; i < w.length; i += 3) lines.push(w.slice(i, i + 3).join(" "));
+      phrase = lines.join("\\n");
+    }
+    ftext.value = phrase;
     decodeFont();
   };
   // palette copy-format buttons

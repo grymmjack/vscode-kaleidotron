@@ -416,7 +416,7 @@ export class TextmodeViewerProvider
     </span>
     <span id="fontctl" style="display:none">
       <span class="lbl">Sample:</span>
-      <input id="ftext" class="ftext" placeholder="font name — type to customise…" spellcheck="false" />
+      <input id="ftext" class="ftext" placeholder="font name — type to customise…" title="Sample text — type \n for a line break (e.g. chemical\nwarfare)" spellcheck="false" />
       <button id="frandom" title="Random typography phrase / pangram">🎲</button>
     </span>
     <span id="audioctl" style="display:none">
