@@ -16,6 +16,7 @@
   let center = false;
   let ruler = false;
   let fit = false; // sticky "fit width on open" mode (remembered)
+  let tile = false; // repeat the image across the whole viewport (remembered)
   let bgColor = ""; // custom background; empty = fall back to CSS (black/editor)
   let sauce = null; // parsed SAUCE record (font / credits / iCE), or null
   let isImage = false; // raster image (PNG/JPG/…) decoded natively, not via wasm
@@ -36,6 +37,9 @@
   // an integer number of DEVICE pixels per source pixel (always-crisp nearest).
   const src = document.createElement("canvas");
   const srcCtx = /** @type {CanvasRenderingContext2D} */ (src.getContext("2d"));
+  // Tile mode: the scaled image is rendered here once, then repeated as a pattern.
+  const tileCv = document.createElement("canvas");
+  const tileCtx = /** @type {CanvasRenderingContext2D} */ (tileCv.getContext("2d"));
 
   const el = (id) => /** @type {any} */ (document.getElementById(id));
   const canvas = /** @type {HTMLCanvasElement} */ (el("art"));
@@ -48,6 +52,7 @@
   const centerBox = /** @type {HTMLInputElement} */ (el("center"));
   const rulerBox = /** @type {HTMLInputElement} */ (el("ruler"));
   const fitBox = /** @type {HTMLInputElement} */ (el("fit"));
+  const tileBox = /** @type {HTMLInputElement} */ (el("tile"));
   const bgBox = /** @type {HTMLInputElement} */ (el("bg"));
   const presets = el("presets");
   const viewctl = el("viewctl");
@@ -217,18 +222,48 @@
     zoom = devScale / dpr; // reflect the snap back into the logical zoom
     const devW = Math.max(1, Math.round(natW * devScale));
     const devH = Math.max(1, Math.round(natH * devScale));
-    canvas.width = devW;
-    canvas.height = devH;
-    canvas.style.width = devW / dpr + "px";
-    canvas.style.height = devH / dpr + "px";
-    ctx.imageSmoothingEnabled = !crisp; // smooth only on heavy downscale
-    ctx.clearRect(0, 0, devW, devH);
-    ctx.drawImage(src, 0, 0, natW, natH, 0, 0, devW, devH);
+    if (tile) drawTiled(devW, devH, crisp, dpr);
+    else {
+      canvas.width = devW;
+      canvas.height = devH;
+      canvas.style.width = devW / dpr + "px";
+      canvas.style.height = devH / dpr + "px";
+      ctx.imageSmoothingEnabled = !crisp; // smooth only on heavy downscale
+      ctx.clearRect(0, 0, devW, devH);
+      ctx.drawImage(src, 0, 0, natW, natH, 0, 0, devW, devH);
+    }
     if (document.activeElement !== zoomInput)
       zoomInput.value = `${Math.round(zoom * 100)}%`;
     updateStatus();
     layoutRulers();
     persist();
+  }
+
+  /** Tile mode: size the canvas to the viewport and repeat the scaled image
+   *  across it (wrapping horizontally + vertically). With Center on, one tile
+   *  sits in the middle and the rest wrap out from it. */
+  function drawTiled(devW, devH, crisp, dpr) {
+    tileCv.width = devW;
+    tileCv.height = devH;
+    tileCtx.imageSmoothingEnabled = !crisp;
+    tileCtx.clearRect(0, 0, devW, devH);
+    tileCtx.drawImage(src, 0, 0, natW, natH, 0, 0, devW, devH);
+    const cssW = Math.max(1, stage.clientWidth - (ruler ? RL : 0));
+    const cssH = Math.max(1, stage.clientHeight - (ruler ? RT : 0));
+    const vw = Math.round(cssW * dpr);
+    const vh = Math.round(cssH * dpr);
+    canvas.width = vw;
+    canvas.height = vh;
+    canvas.style.width = vw / dpr + "px";
+    canvas.style.height = vh / dpr + "px";
+    const pat = ctx.createPattern(tileCv, "repeat");
+    if (!pat) return;
+    const ox = center ? Math.round((vw - devW) / 2) : 0;
+    const oy = center ? Math.round((vh - devH) / 2) : 0;
+    pat.setTransform(new DOMMatrix().translate(ox, oy));
+    ctx.clearRect(0, 0, vw, vh);
+    ctx.fillStyle = pat;
+    ctx.fillRect(0, 0, vw, vh);
   }
 
   /** Character-cell dimensions for the current format/font (for the ruler +
@@ -915,7 +950,7 @@
     clearTimeout(persistT);
     persistT = setTimeout(() => {
       vscode.postMessage({
-        type: "persist", font9, zoom, center, ruler, fit, autoplay,
+        type: "persist", font9, zoom, center, ruler, fit, tile, autoplay,
         bg: bgColor, palCols, palSize,
       });
     }, 250);
@@ -928,6 +963,10 @@
     fit = fitBox.checked;
     if (fit) fitWidth();
     persist();
+  };
+  tileBox.onchange = () => {
+    tile = tileBox.checked;
+    applyZoom();
   };
   el("savePng").onclick = savePng;
   el("openExt").onclick = () => vscode.postMessage({ type: "openMenu" });
@@ -946,10 +985,12 @@
   centerBox.onchange = () => {
     center = centerBox.checked;
     content.classList.toggle("centered", center);
+    if (tile) applyZoom(); // re-anchor the tiling
     persist();
   };
   rulerBox.onchange = () => {
     ruler = rulerBox.checked;
+    if (tile) applyZoom(); // the tiled area shrinks/grows by the ruler gutter
     layoutRulers();
     persist();
   };
@@ -1071,7 +1112,7 @@
     if (dprChanged) { lastDpr = window.devicePixelRatio; buildPresets(); }
     if (isAudio) { layoutWave(); drawWave(); return; }
     if (fit) fitWidth();
-    else if (dprChanged) applyZoom();
+    else if (dprChanged || tile) applyZoom();
     else if (ruler) drawRulers();
   });
 
@@ -1097,10 +1138,12 @@
       center = !!msg.center;
       ruler = !!msg.ruler;
       fit = !!msg.fit;
+      tile = !!msg.tile;
       font9box.checked = font9;
       centerBox.checked = center;
       rulerBox.checked = ruler;
       fitBox.checked = fit;
+      tileBox.checked = tile;
       buildPresets();
       // The 9px-cell toggle only applies to text-mode art (not images/RIP).
       font9box.closest("label").style.display = isGraphics() ? "none" : "";

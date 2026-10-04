@@ -209,6 +209,7 @@ export class TextmodeViewerProvider
       center: gs.get<boolean>("view.center", false),
       ruler: gs.get<boolean>("view.ruler", false),
       fit: gs.get<boolean>("view.fit", false),
+      tile: gs.get<boolean>("view.tile", false),
       bg: gs.get<string>("view.bg", ""),
       palCols: gs.get<number>("view.palCols", 16),
       palSize: gs.get<number>("view.palSize", 42),
@@ -252,6 +253,8 @@ export class TextmodeViewerProvider
           await this.ctx.globalState.update("view.ruler", msg.ruler);
         if (typeof msg.fit === "boolean")
           await this.ctx.globalState.update("view.fit", msg.fit);
+        if (typeof msg.tile === "boolean")
+          await this.ctx.globalState.update("view.tile", msg.tile);
         if (typeof msg.autoplay === "boolean")
           await this.ctx.globalState.update("view.autoplay", msg.autoplay);
         if (typeof msg.bg === "string")
@@ -407,6 +410,7 @@ export class TextmodeViewerProvider
       <label class="tgl"><input type="checkbox" id="center" /> Center</label>
       <label class="tgl"><input type="checkbox" id="ruler" /> Ruler</label>
       <label class="tgl" title="Fit to width on open (remembered)"><input type="checkbox" id="fit" /> Fit</label>
+      <label class="tgl" title="Tile — repeat the image across the whole view (remembered)"><input type="checkbox" id="tile" /> Tile</label>
       <label class="tgl" title="Background color"><input type="color" id="bg" value="#000000" /> BG</label>
       <button id="zoomOut" title="Zoom out (crisp steps)">−</button>
       <input id="zoom" class="zoominput" value="100%" title="Zoom — type a %% and press Enter" spellcheck="false" />
