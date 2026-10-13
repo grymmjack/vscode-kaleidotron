@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { TextmodeViewerProvider } from "./viewerProvider";
+import { loadAppTypes } from "./appTypes";
 
 export function activate(context: vscode.ExtensionContext) {
   const provider = new TextmodeViewerProvider(context);
@@ -49,6 +50,30 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.registerCustomEditorProvider("kaleidotron.palette.opt", provider, {
       webviewOptions: { retainContextWhenHidden: true },
       supportsMultipleEditorsPerDocument: false,
+    })
+  );
+
+  // "Open in Kaleidotron (app)" shows on exactly the types the installed app opens: ask
+  // it (`--list-extensions`) and publish the list as a context key the menu `when` reads.
+  // `resourceExtname` keeps the file's case, so offer both `.png` and `.PNG`.
+  const refreshAppTypes = async () => {
+    const cfg = vscode.workspace.getConfiguration("kaleidotron");
+    const types = await loadAppTypes(cfg.get<string>("kaleidotronPath")?.trim() || "kaleidotron");
+    const includeCode = cfg.get<boolean>("appMenuIncludeCode", false);
+    const exts = [...types]
+      .filter(([, group]) => includeCode || group !== "code")
+      .flatMap(([ext]) => [`.${ext}`, `.${ext.toUpperCase()}`]);
+    vscode.commands.executeCommand("setContext", "kaleidotron.appExts", exts);
+  };
+  refreshAppTypes();
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (
+        e.affectsConfiguration("kaleidotron.kaleidotronPath") ||
+        e.affectsConfiguration("kaleidotron.appMenuIncludeCode")
+      ) {
+        refreshAppTypes();
+      }
     })
   );
 

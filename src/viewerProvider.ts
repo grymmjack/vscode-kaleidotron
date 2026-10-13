@@ -3,6 +3,7 @@ import { Buffer } from "node:buffer";
 import * as cp from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { appTypeGroup } from "./appTypes";
 
 /** Map a lowercased file extension to the wasm `decode_input` ext-code.
  *  Kept in sync with `ext_str` in kaleidotron-textmode-wasm/src/lib.rs. */
@@ -356,8 +357,16 @@ export class TextmodeViewerProvider
   launchKaleidotron(uri: vscode.Uri): void {
     const cfg = vscode.workspace.getConfiguration("kaleidotron");
     const exe = cfg.get<string>("kaleidotronPath")?.trim() || "kaleidotron";
+    // Folders and archives browse as a grid (`--folder`); a file opens in the viewer.
+    let isDir = false;
     try {
-      const child = cp.spawn(exe, ["--open", uri.fsPath], {
+      isDir = fs.statSync(uri.fsPath).isDirectory();
+    } catch {
+      /* missing → let kaleidotron report it */
+    }
+    const browse = isDir || appTypeGroup(extname(uri.fsPath)) === "archive";
+    try {
+      const child = cp.spawn(exe, [browse ? "--folder" : "--open", uri.fsPath], {
         detached: true,
         stdio: "ignore",
       });
