@@ -84,6 +84,10 @@ system `.sf2` is auto-detected (a small font like TimGM6mb loads fastest).
 - **Audio/music player**: waveform, play/pause/stop, click-to-seek, loop, volume.
 - **Save as PNG**, configurable **Open in…** menu (+ PATH auto-detect of PabloDraw
   / Moebius / IcyDraw / GIMP / Aseprite), **Open in Kaleidotron**.
+- **Explorer right-click → Open in Kaleidotron (app)** on every type the kaleidotron
+  app opens — images, scene art, fonts, audio/trackers, video, 3D, PDF — plus folders
+  and archives (browsed as a grid). The list comes from `kaleidotron --list-extensions`,
+  with a built-in copy as fallback for older builds.
 - Per-format **file icons** (language icons; work with Seti and other themes that
   honour them) + an optional bundled icon theme.
 
@@ -94,6 +98,7 @@ version the `xcf` crate can't read won't open here either).
 
 - `kaleidotron.background` — viewer background (`black` / `editor`) when no toolbar colour is picked.
 - `kaleidotron.kaleidotronPath` — kaleidotron executable for *Open in Kaleidotron* (blank = auto-detect).
+- `kaleidotron.appMenuIncludeCode` — also offer *Open in Kaleidotron (app)* on source-code / markup files (off by default).
 - `kaleidotron.externalTools` — programs for the *Open in…* menu.
 - `kaleidotron.soundfontPath` — General MIDI `.sf2` for MIDI playback.
 
